@@ -101,7 +101,6 @@ fastify.get('/.well-known/lnurlp/:username', async (request, reply) => {
     const result = { status: 'ERROR', reason: `An error occured while getting invoice: ${error.message}` }
     request.log.warn(result)
     reply.code(400).send(result)
-    return
   }
 })
 

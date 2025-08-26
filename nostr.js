@@ -1,5 +1,5 @@
 const fastify = require('fastify')({ logger: true })
-const { RelayPool, Relay, signId, calculateId, verifyEvent, getPublicKey } = require('nostr')
+const { Relay, signId, calculateId, verifyEvent, getPublicKey } = require('nostr')
 const { bech32 } = require('bech32')
 const buffer = require('buffer')
 const fs = require('fs')
@@ -116,7 +116,7 @@ const storePendingZapRequest = (paymentHash, zapRequest, comment, logger) => {
 }
 
 const handleInvoiceUpdate = async (invoice) => {
-  if (invoice.status == 'Cancelled') {
+  if (invoice.status === 'Cancelled') {
     delete pendingZapRequests[invoice.paymentHash]
     return
   }
@@ -213,7 +213,7 @@ function sendNote(url, note, logger) {
   });
   
   relay.on('ok', (id, success, message) => {
-    if (_nostrMetadataNote && id == _nostrMetadataNote.id) {
+    if (_nostrMetadataNote && id === _nostrMetadataNote.id) {
       logger.info({msg: 'Metadata event', relay: relay.url, success: success, message: message, id: encode('event', id)})
     }
     if (id === note.id) {

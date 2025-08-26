@@ -88,6 +88,7 @@ const handleRelayConnection = (connection, request) => {
           const payload = message[2]
           if (payload.kinds && payload.kinds.includes(13194)) {
             let response = {
+              created_at: Math.round(Date.now() / 1000),
               pubkey: _nostrWalletConnectEncryptPubKey,
               kind: 13194,
               content: 'pay_invoice'
@@ -102,14 +103,14 @@ const handleRelayConnection = (connection, request) => {
         case 'EVENT':
           await verifyZapRequest(message[1])
           zapRequest = message[1]
-          checkProgress()
+          await checkProgress()
           break
 
         case 'AUTH':
           const authPubkey = await verifyAuthResponse(message[1], challenge)
           if (!isAuthenticated) logger.info(`Connection is authenticated: ${encode('npub', authPubkey)}`)
           isAuthenticated = true
-          checkProgress()
+          await checkProgress()
           break
       }
     }
@@ -131,7 +132,7 @@ const handleRelayConnection = (connection, request) => {
   }
   
   connection.socket.on('close', async (code, reason) => {
-    if (code != 1000) {
+    if (code !== 1000) {
       logger.info({msg: 'Connection closed', code: code, reason: reason})
     }
   })
@@ -156,13 +157,13 @@ const handleRelayConnection = (connection, request) => {
 }
 
 async function verifyZapRequest(zapRequest) {
-  if (zapRequest.kind != 23194)
+  if (zapRequest.kind !== 23194)
     throw new Error('Event is not a zap request')
 
   if (Math.abs(zapRequest.created_at - Math.floor(Date.now() / 1000)) > 10)
     throw new Error('Timestamp out of bounds')
 
-  if (zapRequest.pubkey != _nostrWalletConnectEncryptPubKey)
+  if (zapRequest.pubkey !== _nostrWalletConnectEncryptPubKey)
     throw new Error('Event has unknown pubkey')
 
   if (!zapRequest.tags || zapRequest.tags.length === 0)
@@ -185,27 +186,27 @@ async function verifyZapRequest(zapRequest) {
 }
 
 async function verifyAuthResponse(authResponse, challenge) {
-  if (authResponse.kind != 22242)
+  if (authResponse.kind !== 22242)
     throw new Error('Auth event is not an auth response')
 
   if (Math.abs(authResponse.created_at - Math.floor(Date.now() / 1000)) > 10)
     throw new Error('Timestamp out of bounds')
 
   const challengeTags = getTags(authResponse.tags, 'challenge')
-  if (challengeTags.length != 1)
+  if (challengeTags.length !== 1)
     throw new Error('Challange tags invalid length')
-  if (challengeTags[0][1] != challenge)
+  if (challengeTags[0][1] !== challenge)
     throw new Error('Challenge does not match')
 
   const relayTags = getTags(authResponse.tags, 'relay')
-  if (relayTags.length != 1)
+  if (relayTags.length !== 1)
     throw new Error('Relay tags invalid length')
   let relay = new URL(relayTags[0][1])
 
   if (relay.protocol !== 'ws:' && relay.protocol !== 'wss:')
     throw new Error('Invalid relay protocol')
 
-  if (process.env.HOST != '0.0.0.0' && relay.host !== _nostrWalletConnectRelayHost)
+  if (process.env.HOST !== '0.0.0.0' && relay.host !== _nostrWalletConnectRelayHost)
     throw new Error('Relay host mismatch')
 
   if (await calculateId(authResponse) !== authResponse.id)
@@ -308,7 +309,7 @@ function getTags(tags, tag) {
 }
 
 function filterZaps(timeWindow) {
-  now = Date.now()
+  let now = Date.now()
   return zaps.filter(zap => zap.timestamp > now - timeWindow)
 }
 
