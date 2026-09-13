@@ -3,6 +3,7 @@ const crypto = require('crypto')
 const { getLnClient } = require('../backends/factory')
 const { getNostrZapperPubKey, verifyZapRequest, storePendingZapRequest, handleInvoiceUpdate } = require('../nostr/zaps')
 const { isWalletConnectEnabled, getWalletConnectHandler, getWalletConnectWsHandler, startOutboundRelayClient } = require('../nostr/nwcServer')
+const { parsePublicKey } = require('../nostr/crypto')
 const { renderLandingPage } = require('./landingPage')
 
 function registerRoutes(fastify) {
@@ -12,7 +13,7 @@ function registerRoutes(fastify) {
   const _lnurlpUrl = `https://${_domain}/.well-known/lnurlp/${_username}`
   const _metadata = [['text/identifier', _identifier], ['text/plain', `Satoshis to ${_identifier}`]]
   const _nostrZapperPubKey = getNostrZapperPubKey()
-  const _nostrProfilePubKey = process.env.LIGESS_NOSTR_PUBKEY || _nostrZapperPubKey
+  const _nostrProfilePubKey = process.env.LIGESS_NOSTR_PUBKEY ? parsePublicKey(process.env.LIGESS_NOSTR_PUBKEY) : _nostrZapperPubKey
 
   // CORS hook to allow browser-based Nostr apps to query LNURL and NIP-05
   fastify.addHook('onRequest', async (request, reply) => {
