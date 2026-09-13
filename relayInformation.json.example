@@ -3,9 +3,18 @@
   "description": "<string with detailed information>",
   "pubkey": "<administrative contact pubkey>",
   "contact": "<administrative alternate contact>",
-  "supported_nips": [1,11,42,47,57],
-  "software": "https://github.com/mutatrum/ligess",
-  "version": "#5d58120",
+  "supported_nips": [
+    1,
+    4,
+    5,
+    11,
+    42,
+    44,
+    47,
+    57
+  ],
+  "software": "https://git.mutatrum.com/mutatrum/ligess",
+  "version": "2.0.0",
   "limitation": {
     "auth_required": true
   }
