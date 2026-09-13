@@ -15,7 +15,7 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
   - **Real-Time Invoice Streaming**: Native SSE push notifications for LND (`/v1/invoices/subscribe`) and Phoenixd (`/payments/incoming`), eliminating polling delays for instant zap receipts.
 - 🏗️ **Clean Modular `src/` Architecture**:
   - Codebase structured into specialized domain modules: `src/config/`, `src/backends/`, `src/clients/`, `src/nostr/`, `src/storage/`, `src/web/`, and `bin/`.
-  - 100% backward compatibility preserved via root shims for existing container setups and scripts.
+  
 - 🛡️ **Zero-Loss Persistence Engine**:
   - Atomic, durable file-backed persistence (`data/pending_zaps.json` and `data/zaps.json`) with atomic temporary file swapping.
   - In-flight zaps survive node and server restarts without dropping kind 9735 zap receipts.
@@ -30,7 +30,7 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
   - **Expanded Methods**: `get_info`, `get_balance`, `get_budget`, `pay_invoice`, `pay_offer`, `make_invoice`, and `lookup_invoice`.
 - 📜 **BOLT12 & BIP-353 via LNDK**:
   - Outbound BOLT12 payment via NWC (`pay_offer`) routed through [LNDK](https://github.com/lndk-org/lndk).
-  - Built-in BIP-353 DNS TXT record generator (`node bip353.js`) for human-readable Bitcoin addresses (`username@domain.com`).
+  - Built-in BIP-353 DNS TXT record generator (`npm run bip353` or `node bin/bip353.js`) for human-readable Bitcoin addresses (`username@domain.com`).
 - 🎨 **Modern Web Landing Page & WebLN**:
   - Interactive glassmorphic dark-mode web portal at `https://YOURDOMAIN.COM/`.
   - **WebLN One-Click Pay**: Instant payments with browser extensions (Alby, Zeus).
@@ -225,7 +225,8 @@ LIGESS_NOSTR_WALLET_CONNECT_RELAY=wss://yourdomain.com/relay/
 ### Pairing QR Code
 To print a scannable NWC pairing QR code in the terminal:
 ```bash
-node showWalletConnectQR.js
+npm run show-qr
+# or: node bin/show-qr.js
 ```
 
 ### Budget Controls
@@ -258,7 +259,7 @@ user.user._bitcoin-payment.domain.com. IN TXT "bitcoin:?lno=lno1..."
 ```
 You can generate the DNS record for your domain with:
 ```bash
-node bip353.js --user alice --domain mydomain.com --offer lno1...
+node bin/bip353.js --user alice --domain mydomain.com --offer lno1...
 ```
 
 ---
@@ -276,7 +277,7 @@ Visit `https://YOURDOMAIN.COM/` in any browser to see the interactive portal:
 
 ## Codebase Architecture
 
-Ligess is structured into clean, modular layers within `src/` while providing root-level compatibility shims:
+Ligess is structured into clean, modular layers within `src/` and executable utilities in `bin/`:
 
 ```
 ligess/

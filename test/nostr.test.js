@@ -1,8 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { generateSecretKey, getPublicKey, finalizeEvent, nip19 } = require('nostr-tools')
-const { parsePrivateKey, verifyZapRequest, handleInvoiceUpdate } = require('../nostr')
-const db = require('../db')
+const { parsePrivateKey, verifyZapRequest, handleInvoiceUpdate } = require('../src/nostr/zaps')
+const db = require('../src/storage/db')
 
 test('Nostr Stack & Zap Validation', async (t) => {
   const sk = generateSecretKey()

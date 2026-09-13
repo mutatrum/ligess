@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert')
-const { renderLandingPage } = require('../landingPage')
+const { renderLandingPage } = require('../src/web/landingPage')
 
 describe('Landing Page Renderer', () => {
   it('should render HTML with escaped values and WebLN button', () => {

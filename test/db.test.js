@@ -2,7 +2,7 @@ const { describe, it, before, after } = require('node:test')
 const assert = require('node:assert')
 const fs = require('fs')
 const path = require('path')
-const db = require('../db')
+const db = require('../src/storage/db')
 
 describe('Persistence Engine (db.js)', () => {
   it('should store, retrieve, and remove pending zap requests', () => {

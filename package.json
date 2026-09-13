@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "bip353": "node bin/bip353.js",
+    "show-qr": "node bin/show-qr.js"
   },
   "dependencies": {
     "@fastify/websocket": "^8.0.0",

@@ -9,7 +9,8 @@ process.env.LIGESS_LND_REST = 'https://127.0.0.1:8080'
 process.env.LIGESS_LND_MACAROON = '00'
 process.env.LIGESS_NOSTR_PUBKEY = '4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff'
 
-const { fastify } = require('../router')
+const { buildApp } = require('../src/app')
+const fastify = buildApp({ logger: false })
 
 test('Router & HTTP Endpoints', async (t) => {
   await t.test('should return CORS headers on OPTIONS preflight', async () => {

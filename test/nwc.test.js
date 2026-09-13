@@ -17,7 +17,7 @@ const {
   processZapRequest,
   parsePrivateKey,
   parsePublicKey
-} = require('../nostrWalletConnect')
+} = require('../src/nostr/nwcServer')
 
 test('Nostr Wallet Connect (NIP-47)', async (t) => {
   const clientSk = generateSecretKey()

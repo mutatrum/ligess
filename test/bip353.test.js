@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert')
-const { formatDnsTxtRecord, getBip353Uri } = require('../bip353')
+const { formatDnsTxtRecord, getBip353Uri } = require('../bin/bip353')
 
 describe('BIP-353 Helpers', () => {
   it('should format valid BIP-353 DNS TXT records', () => {
