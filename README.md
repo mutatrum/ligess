@@ -1,150 +1,340 @@
 # LIGESS (**Lig**~~htning addr~~**ess**)
 
-## Your personal Lightning address server
+## Your personal sovereign Lightning address & Nostr server
 > Like an email address, but for your Bitcoin!
-A massively simpler way for anyone to send you Bitcoin instantly on the Lightning Network and send and receive zaps on Nostr.
+A massively simpler way for anyone to send you Bitcoin instantly on the Lightning Network, send and receive zaps on Nostr, connect your wallet via Nostr Wallet Connect (NIP-47), and accept payments via BOLT12 and BIP-353.
 
 *https://lightningaddress.com/*
 
-## Prerequisite
-- Nodejs >= 14
-- Lightning node
-- A domain name
+---
 
-## Supported Lightning implementation
-- LND (LND with REST API)
-- Eclair (v0.6.2)
+## What's New in Ligess Modernized
 
-## Installation
+- ⚡ **9 Native Lightning & Ecash Backends (Sunsetting `una-wrapper`)**:
+  - Direct REST, GraphQL, and Nostr drivers for **LND**, **Core Lightning (CLN)**, **LNbits**, **Eclair**, **Phoenixd**, **Upstream NWC** (Alby Hub, Umbrel, Zeus), **LDK Node / Server**, **Blink (Galoy)**, and **Cashu Mint**.
+  - **Real-Time Invoice Streaming**: Native SSE push notifications for LND (`/v1/invoices/subscribe`) and Phoenixd (`/payments/incoming`), eliminating polling delays for instant zap receipts.
+- 🏗️ **Clean Modular `src/` Architecture**:
+  - Codebase structured into specialized domain modules: `src/config/`, `src/backends/`, `src/clients/`, `src/nostr/`, `src/storage/`, `src/web/`, and `bin/`.
+  - 100% backward compatibility preserved via root shims for existing container setups and scripts.
+- 🛡️ **Zero-Loss Persistence Engine**:
+  - Atomic, durable file-backed persistence (`data/pending_zaps.json` and `data/zaps.json`) with atomic temporary file swapping.
+  - In-flight zaps survive node and server restarts without dropping kind 9735 zap receipts.
+- 🔮 **Nostr Stack Upgrade (`nostr-tools v2`)**:
+  - Full support for **hex** and **bech32** keys (`nsec1...`, `npub1...`).
+  - **NIP-05 DNS Verification**: Built-in `GET /.well-known/nostr.json?name=<username>`.
+  - **NIP-33 Support**: Validates and forwards addressable event `a` tags (for long-form posts, badges, live streams).
+  - **CORS & Rate Limiting**: Built-in global CORS for web clients (Coracle, Snort, Nostter) and sliding-window rate limiting on invoice generation.
+- 📱 **Nostr Wallet Connect (NIP-47) Modernized**:
+  - **Dual NIP-44 v2 & NIP-04 Encryption**: Seamless auto-detection and encryption with ChaCha20-Poly1305 or legacy AES-CBC.
+  - **Outbound Relay Client**: Connects as a client to public relays (`wss://relay.damus.io`, `wss://nos.lol`), completely eliminating the need for open inbound ports or complex reverse-proxy setup.
+  - **Expanded Methods**: `get_info`, `get_balance`, `get_budget`, `pay_invoice`, `pay_offer`, `make_invoice`, and `lookup_invoice`.
+- 📜 **BOLT12 & BIP-353 via LNDK**:
+  - Outbound BOLT12 payment via NWC (`pay_offer`) routed through [LNDK](https://github.com/lndk-org/lndk).
+  - Built-in BIP-353 DNS TXT record generator (`node bip353.js`) for human-readable Bitcoin addresses (`username@domain.com`).
+- 🎨 **Modern Web Landing Page & WebLN**:
+  - Interactive glassmorphic dark-mode web portal at `https://YOURDOMAIN.COM/`.
+  - **WebLN One-Click Pay**: Instant payments with browser extensions (Alby, Zeus).
+  - Preset sat buttons (21, 100, 1000, 5000), copy buttons, and dual-stack LNURL & BOLT12 QR codes.
 
-### Standalone
-``` shell
+---
+
+## Prerequisites
+- Node.js >= 18 (Tested on v20 and v24)
+- Lightning Node or Gateway (LND, CLN, LNbits, Eclair, Phoenixd, Upstream NWC, LDK, Blink, or Cashu)
+- Domain name with HTTPS
+
+---
+
+## Supported Lightning & Ecash Backends
+
+| Backend | Driver Type | Real-Time Events | Required Config |
+| :--- | :--- | :--- | :--- |
+| **LND** | Native REST | ✅ SSE Push (`/v1/invoices/subscribe`) | `LIGESS_LND_REST`, `LIGESS_LND_MACAROON` |
+| **CLN** | Native REST | ✅ Polling stream | `LIGESS_CLN_REST`, `LIGESS_CLN_MACAROON` or `LIGESS_CLN_RUNE` |
+| **LNbits** | Native REST | ✅ Polling stream | `LIGESS_LNBITS_DOMAIN`, `LIGESS_LNBITS_API_KEY` |
+| **Eclair** | Native REST | ✅ Polling stream | `LIGESS_ECLAIR_REST`, `LIGESS_ECLAIR_PASSWORD` |
+| **Phoenixd** | Native REST | ✅ SSE Push (`/payments/incoming`) | `LIGESS_PHOENIXD_PASSWORD`, `LIGESS_PHOENIXD_URL` |
+| **NWC** | Nostr Client | ✅ Relay subscription (`kind: 23195`) | `LIGESS_NWC_URI` (Alby Hub, Umbrel, Zeus) |
+| **LDK** | Native REST | ✅ Polling stream | `LIGESS_LDK_URL`, `LIGESS_LDK_API_KEY` |
+| **Blink** | GraphQL API | ✅ Polling stream | `LIGESS_BLINK_API_KEY`, `LIGESS_BLINK_URL` |
+| **Cashu** | NUT-04 / NUT-05 | ✅ Quote status stream | `LIGESS_CASHU_MINT_URL` |
+
+---
+
+## Quick Start
+
+### 1. Standalone Setup
+```bash
 git clone https://github.com/mutatrum/ligess
-cd ligess && yarn install
+cd ligess
+npm install
 cp .env.example .env
-# Edit .env with your info
-yarn dev
+# Edit .env with your backend credentials and domain
+npm start
 ```
 
-### Using Docker compose
-``` shell
+For development with automatic reload:
+```bash
+npm run dev
+```
+
+To run the automated test suite:
+```bash
+npm test
+```
+
+### 2. Docker Compose
+```bash
 git clone https://github.com/mutatrum/ligess
-# Edit `docker-compose.yml` with your details.
+cd ligess
+# Edit docker-compose.yml or mount your .env file
 docker-compose up -d
 ```
 
-## Usage
-You should be able to access to https://YOURDOMAIN.COM/.well-known/lnurlp/USERNAME and get a valid [LUD-06](https://github.com/fiatjaf/lnurl-rfc/blob/luds/06.md) JSON response.
+---
 
-Now your Lightning address is configured as follow `USERNAME@YOURDOMAIN.COM`
+## Backend Configuration
 
-### Installation for LND
-In `.env` config file or `docker-compose` environment:
-```
+### LND Configuration
+```env
 LIGESS_LN_BACKEND=LND
-LIGESS_LND_REST=https://yourLNDRestAPI.com # can be an onion url
-LIGESS_LND_MACAROON=hex string macaroon with invoices:read and invoices:write # should be a long (~265 character) string that you generate either on a CLI or in a UI.
+LIGESS_LND_REST=https://127.0.0.1:8080
+LIGESS_LND_MACAROON=02010... # Hex macaroon with invoices:read and invoices:write (and offchain:write for NWC)
 ```
 
-#### Tip
-
-The macaroon is what gives ligess the permissions to create invoices on behalf of your LND node.
-
-The act of generating a macaroon is called "baking".  If you're paying for hosting an LND node, there should be a UI.  On Voltage, it's Connect > Other Macaroons > "Bake Other Macaroon".  For self-hosted, there is a CLI tool to generate it.
-
-More information on macaroons can be found [here](https://github.com/lightningnetwork/lnd/blob/master/docs/macaroons.md).  
-
-### Installation for Eclair
-In `.env` config file or `docker-compose` environment:
-```
-LIGESS_LN_BACKEND=Eclair
-LIGESS_ECLAIR_REST=http://eclair_rest_api # can be an onion url
-LIGESS_ECLAIR_LOGIN=login
-LIGESS_ECLAIR_PASSWORD=password
+To bake an LND macaroon with minimal required permissions:
+```bash
+lncli bakemacaroon invoices:read invoices:write offchain:write
 ```
 
-### Installation for LNbits
-In `.env` config file or `docker-compose` environment:
-```
-LIGESS_LN_BACKEND=LNbits
-LIGESS_LNBITS_DOMAIN=https://lnbits.com # can be replaced by your own LNbits isntance url
-LIGESS_LNBITS_API_KEY=this1is2an3example # can be found at the right of your wallet page, under "API info" > "Invoice/read key"
-```
-
-### Using Tor
-For the standalone install, be sure to have Tor running on your computer.
-
-For the Docker install, add (or uncomment) the following lines in 'docker-compose.yml` in order to run Tor as a Docker container:
-```yml
-  tor:
-    image: lncm/tor:latest
-    restart: on-failure
-    command: --SocksPort 0.0.0.0:9050
-    expose:
-      - 9050
-```
-Then specify the Tor proxy URL in `.env` config file or `docker-compose` environment:
-```
-LIGESS_TOR_PROXY_URL=socks5h://127.0.0.1:9050 # standalone installation
+### Core Lightning (CLN) Configuration
+```env
+LIGESS_LN_BACKEND=CLN
+LIGESS_CLN_REST=https://127.0.0.1:3001
+LIGESS_CLN_RUNE=your_rune_string
 # or
-LIGESS_TOR_PROXY_URL=socks5h://tor:9050 # docker installation
+LIGESS_CLN_MACAROON=hex_macaroon_string
 ```
 
-### Using Nostr
-For sending zap notes on Nostr, you have to supply a Nostr private Key in `.env` that acts as the zap sender, in hex format.
-```
-LIGESS_NOSTR_ZAPPER_PRIVATE_KEY=this1is2an3example
-```
-
-You can create a new private key locally with:
-```
-openssl rand -hex 32
+### LNbits Configuration
+```env
+LIGESS_LN_BACKEND=LNbits
+LIGESS_LNBITS_DOMAIN=https://legend.lnbits.com
+LIGESS_LNBITS_API_KEY=your_invoice_key
 ```
 
-To have zap requests working from web clients, and prevent CORS errors, make sure to add the following header to the web server configuration:
-```
-Access-Control-Allow-Origin "*";
-```
-
-#### Nostr metadata
-To have ligess send a kind 0 (metadata) note for your zap sender profile, create a json file and refer to it with the `LIGESS_NOSTR_METADATA_FILE` property in the `.env` config file. An example is provided in `metadata.json.example`.
-
-This metadata note will be sent once per relay.
-
-#### Nostr Wallet Connect
-To enable Nostr Wallet Connect (aka One-Tap-Zaps), set `LIGESS_NOSTR_WALLET_CONNECT_PRIVATE_KEY` with a Nostr private key. It is recommended to generate another new public/private keypair for this, as it will be shared with the apps that use Nostr Wallet Connect feature and can spend funds from your node.
-
-First, create a new macaroon, as Ligess needs the `offchain:write` permission to be able to pay invoices.
-
-For LND, this can be done with:
-```
-lncli bakemacaroon invoices:write invoices:read offchain:write
+### Eclair Configuration
+```env
+LIGESS_LN_BACKEND=Eclair
+LIGESS_ECLAIR_REST=http://127.0.0.1:8080
+LIGESS_ECLAIR_LOGIN=eclair-user
+LIGESS_ECLAIR_PASSWORD=your_password
 ```
 
-Note: If this gives a permission denied error, all macaroons need to regenerated. See https://github.com/lightningnetwork/lnd/blob/master/macaroons/README.md#upgrading-from-v080-beta-or-earlier for more information on this.
-
-Configure the external relay URL with `LIGESS_NOSTR_WALLET_CONNECT_RELAY`. Any incoming websocket connection on this URL should be forwarded to `/relay/`.
-
-It's also possible to configure a Relay Information Document (NIP-11) by specifying a file in `LIGESS_NOSTR_RELAY_INFORMATION`.
-
-The connection string to use in the app is composed as follows: `nostr+walletconnect://<pubkey>?relay:<relay url>&secret=<privkey>`.
-
-If the private key and relay are configured, running `node showWalletConnectQR.js` will generate a QR code of this connection string that can be scanned by a mobile app.
-
-For extra security, it's possible to require authentication on the relay connection. When using Amethyst or Nostter, it will authenticate using the keys of the logged in user. To enforce this, set the pubkey of that user with `LIGESS_NOSTR_WALLET_CONNECT_PUBLIC_KEY`.
-
-##### Budget limitations
-Ligess has a mandatory budget configuration for Nostr Wallet Connect. This limits the amounts of a single zap, and of hour and day spends:
+### Phoenixd Configuration (ACINQ)
+```env
+LIGESS_LN_BACKEND=Phoenixd
+LIGESS_PHOENIXD_URL=http://127.0.0.1:9740
+LIGESS_PHOENIXD_PASSWORD=your_phoenixd_http_password
 ```
-LIGESS_NOSTR_WALLET_CONNECT_BUDGET_ZAP=5000
-LIGESS_NOSTR_WALLET_CONNECT_BUDGET_HOUR=25000
-LIGESS_NOSTR_WALLET_CONNECT_BUDGET_DAY=100000
+Phoenixd provides zero-channel-management Lightning with real-time SSE payment notifications.
+
+### Upstream Nostr Wallet Connect (NWC)
+```env
+LIGESS_LN_BACKEND=NWC
+LIGESS_NWC_URI=nostr+walletconnect://<wallet_pubkey>?relay=wss://relay.getalby.com/v1&secret=<secret>
 ```
-Zap amounts and timestamps for the last day are stored in a `zaps.json` file. This is to persist the expended budget with restarts.
+Connects Ligess as an NWC client to any upstream wallet (Alby Hub, Umbrel, Zeus, Mutiny). Requires **zero open inbound ports** and works seamlessly behind strict firewalls and CGNAT.
 
-## Support this project
-You can help me by contributing to this project or by donating to my Lightning address `dolu@bips.xyz`
+### LDK Node / LDK Server REST
+```env
+LIGESS_LN_BACKEND=LDK
+LIGESS_LDK_URL=http://127.0.0.1:3000
+LIGESS_LDK_API_KEY=your_ldk_api_token
+```
 
-Other donation methods are avaible here https://bips.xyz/support
+### Blink / Galoy (GraphQL)
+```env
+LIGESS_LN_BACKEND=Blink
+LIGESS_BLINK_API_KEY=your_blink_api_key
+LIGESS_BLINK_URL=https://api.blink.sv/graphql # Optional (default)
+LIGESS_BLINK_WALLET_ID=your_btc_wallet_id     # Optional: auto-detected if omitted
+```
 
-The Nostr extensions are made by mutatrum, and tips for this are welcome on the Lightning address `mutatrum@hodl.camp`.
+### Cashu Mint (NUT-04 / NUT-05)
+```env
+LIGESS_LN_BACKEND=Cashu
+LIGESS_CASHU_MINT_URL=https://mint.minibits.cash/Bitcoin
+```
+Accept Lightning payments as Cashu ecash quotes without running any Lightning node infrastructure.
+
+### Tor SOCKS5 Proxy
+To route node requests through Tor (works for all backends):
+```env
+LIGESS_TOR_PROXY_URL=socks5h://127.0.0.1:9050
+```
+
+---
+
+## Nostr & Zaps (NIP-57)
+
+Set `LIGESS_NOSTR_ZAPPER_PRIVATE_KEY` in `.env` to a 64-char hex key or a `nsec1...` string:
+```env
+LIGESS_NOSTR_ZAPPER_PRIVATE_KEY=nsec1...
+```
+
+### NIP-05 DNS Verification
+Ligess automatically serves `GET /.well-known/nostr.json?name=<username>`.
+Specify your profile's hex pubkey or `npub1...` in:
+```env
+LIGESS_NOSTR_PUBKEY=npub1...
+```
+Now clients verifying `username@yourdomain.com` will validate your profile.
+
+### Nostr Profile Metadata (Kind 0)
+Create a `metadata.json` (see `metadata.json.example`) and reference it:
+```env
+LIGESS_NOSTR_METADATA_FILE=metadata.json
+```
+Ligess will broadcast your profile metadata to zapping relays.
+
+---
+
+## Nostr Wallet Connect (NIP-47)
+
+NWC enables 1-tap zapping from apps like Damus, Amethyst, Coracle, and Nostter.
+
+Set a dedicated private key for NWC:
+```env
+LIGESS_NOSTR_WALLET_CONNECT_PRIVATE_KEY=nsec1...
+```
+
+### Outbound Relays (Recommended - No Open Ports Needed)
+Specify comma-separated public relays:
+```env
+LIGESS_NOSTR_WALLET_CONNECT_RELAYS=wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net
+```
+Ligess will connect as a client, advertise its kind 13194 capabilities, listen for incoming kind 23194 requests, and publish kind 23195 responses.
+
+### Inbound WebSocket Endpoint
+If you prefer direct connections to your own server:
+```env
+LIGESS_NOSTR_WALLET_CONNECT_RELAY=wss://yourdomain.com/relay/
+```
+
+### Pairing QR Code
+To print a scannable NWC pairing QR code in the terminal:
+```bash
+node showWalletConnectQR.js
+```
+
+### Budget Controls
+All spendings are tracked atomically in `data/zaps.json`:
+```env
+LIGESS_NOSTR_WALLET_CONNECT_BUDGET_ZAP=5000     # Max single payment (sats)
+LIGESS_NOSTR_WALLET_CONNECT_BUDGET_HOUR=25000   # Max per hour (sats)
+LIGESS_NOSTR_WALLET_CONNECT_BUDGET_DAY=100000   # Max per day (sats)
+```
+
+---
+
+## BOLT12 & LNDK Integration
+
+Ligess can leverage [LNDK](https://github.com/lndk-org/lndk) to unlock BOLT12 support for LND nodes.
+
+### Outbound BOLT12 via NWC (`pay_offer`)
+Configure LNDK gRPC access:
+```env
+LIGESS_LNDK_GRPC_HOST=127.0.0.1:7000
+LIGESS_LNDK_CERT_PATH=/path/to/lndk/tls.cert
+LIGESS_LNDK_MACAROON_PATH=/path/to/lnd/admin.macaroon
+```
+Once enabled, NWC advertises `pay_offer` and routes BOLT12 offer payments through LNDK.
+
+### Inbound BOLT12 via BIP-353
+Inbound BOLT12 uses DNS TXT records defined in [BIP-353](https://github.com/bitcoin/bips/blob/master/bip-0353.mediawiki):
+```
+user.user._bitcoin-payment.domain.com. IN TXT "bitcoin:?lno=lno1..."
+```
+You can generate the DNS record for your domain with:
+```bash
+node bip353.js --user alice --domain mydomain.com --offer lno1...
+```
+
+---
+
+## Web Landing Page & WebLN
+
+Visit `https://YOURDOMAIN.COM/` in any browser to see the interactive portal:
+- Display name, avatar, and bio loaded from `metadata.json`.
+- Click-to-copy Lightning Address (`user@domain.com`).
+- WebLN button to pay presets (21, 100, 1000, 5000 sats) with one click via Alby or Zeus.
+- Toggle between Lightning Address QR and BOLT12 Offer QR.
+- Legacy clients requesting JSON receive standard LNURL parameters.
+
+---
+
+## Codebase Architecture
+
+Ligess is structured into clean, modular layers within `src/` while providing root-level compatibility shims:
+
+```
+ligess/
+├── src/
+│   ├── app.js               # Fastify application assembly & startup
+│   ├── config/
+│   │   ├── constants.js     # Global constants, backend enum, time windows
+│   │   └── startup.js       # Environment check & credential validation
+│   ├── backends/            # Lightning & Ecash drivers
+│   │   ├── base.js          # Abstract base backend class (EventEmitter)
+│   │   ├── factory.js       # Backend factory (createBackend, getLnClient)
+│   │   ├── lnd.js           # LND REST + SSE invoice stream
+│   │   ├── cln.js           # Core Lightning REST (rune & macaroon)
+│   │   ├── lnbits.js        # LNbits API driver
+│   │   ├── eclair.js        # Eclair REST driver
+│   │   ├── phoenixd.js      # ACINQ Phoenixd + SSE payment stream
+│   │   ├── nwc.js           # Upstream NWC client (Alby Hub, Zeus, etc.)
+│   │   ├── ldk.js           # LDK Node / Server REST driver
+│   │   ├── blink.js         # Blink (Galoy) GraphQL driver
+│   │   └── cashu.js         # Cashu Mint (NUT-04/NUT-05) driver
+│   ├── clients/
+│   │   └── lndk.js          # LNDK gRPC client for BOLT12 offers
+│   ├── nostr/
+│   │   ├── crypto.js        # NIP-44 & NIP-04 crypto, bech32 key helpers
+│   │   ├── zaps.js          # NIP-57 zap verification & receipt generation
+│   │   └── nwcServer.js     # NIP-47 wallet connect server & outbound relay client
+│   ├── storage/
+│   │   └── db.js            # Crash-safe atomic JSON persistence
+│   └── web/
+│       ├── landingPage.js   # Glassmorphic WebLN landing page generator
+│       └── router.js        # Fastify router, CORS, rate-limiting, NIP-05
+├── bin/
+│   ├── bip353.js            # Standalone CLI for BIP-353 DNS TXT records
+│   └── show-qr.js           # Standalone CLI for NWC pairing QR code
+├── data/                    # Persistent storage (pending_zaps.json, zaps.json)
+└── test/                    # Node test runner automated test suite
+```
+
+---
+
+## Testing
+
+Run the full suite of automated unit tests:
+```bash
+npm test
+```
+Tests cover:
+- All 9 backend drivers (LND, LNbits, CLN, Eclair, Phoenixd, NWC, LDK, Blink, Cashu) and backend factory resolution
+- Persistence engine and budget window sums
+- NIP-57 zap requests and NIP-33 addressable tags
+- NIP-47 dual NIP-44 and NIP-04 encryption and error codes
+- NIP-05 DNS verification, CORS headers, and WebLN landing page
+- BIP-353 DNS TXT record formatting
+
+---
+
+## License & Credits
+MIT License.
+Original project created by [dolu89](https://github.com/dolu89/ligess).
+Nostr extensions and modernization by [mutatrum](https://github.com/mutatrum).
+Tips and zaps welcome at `mutatrum@hodl.camp`.
