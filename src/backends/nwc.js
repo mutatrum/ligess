@@ -1,3 +1,7 @@
+try {
+  globalThis.WebSocket = require('ws')
+} catch (_) {}
+
 const Backend = require('./base')
 const { finalizeEvent, getPublicKey, nip04, nip44, SimplePool } = require('nostr-tools')
 

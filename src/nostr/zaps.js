@@ -1,3 +1,7 @@
+try {
+  globalThis.WebSocket = require('ws')
+} catch (_) {}
+
 const fs = require('fs')
 const { SimplePool, finalizeEvent, verifyEvent, getPublicKey, nip19 } = require('nostr-tools')
 const db = require('../storage/db')

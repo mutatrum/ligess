@@ -1,3 +1,7 @@
+try {
+  globalThis.WebSocket = require('ws')
+} catch (_) {}
+
 const { finalizeEvent, verifyEvent, getPublicKey, nip19, SimplePool } = require('nostr-tools')
 const { getLnClient } = require('../backends/factory')
 const { lndkClient } = require('../clients/lndk')
