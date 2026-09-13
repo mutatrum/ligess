@@ -1,5 +1,1 @@
-const LND = 'LND'
-const LNbits = 'LNbits'
-const Eclair = 'Eclair'
-
-module.exports = { LND, LNbits, Eclair }
+module.exports = require('./src/config/constants')
