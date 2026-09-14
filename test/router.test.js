@@ -2,6 +2,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 // Configure environment before importing router
+process.env.NODE_ENV = 'test'
 process.env.LIGESS_USERNAME = 'satoshi'
 process.env.LIGESS_DOMAIN = 'ligess.example.com'
 process.env.LIGESS_LN_BACKEND = 'lnd'
@@ -119,4 +120,6 @@ test('Router & HTTP Endpoints', async (t) => {
     })
     assert.equal(res.statusCode, 404)
   })
+
+  await fastify.close()
 })

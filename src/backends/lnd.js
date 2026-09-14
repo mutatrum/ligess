@@ -210,20 +210,36 @@ class LndBackend extends Backend {
         })
 
         res.on('end', () => {
+          if (!this.isWatching) return
           console.warn('LND invoice subscription stream ended. Reconnecting in 3s...')
           this.reconnectTimer = setTimeout(connectStream, 3000)
+          if (this.reconnectTimer && typeof this.reconnectTimer.unref === 'function') {
+            this.reconnectTimer.unref()
+          }
         })
       })
 
       req.on('error', (err) => {
+        if (!this.isWatching) return
         console.warn('LND invoice subscription stream error:', err.message)
         this.reconnectTimer = setTimeout(connectStream, 5000)
+        if (this.reconnectTimer && typeof this.reconnectTimer.unref === 'function') {
+          this.reconnectTimer.unref()
+        }
       })
 
       req.end()
     }
 
     connectStream()
+  }
+
+  stopWatchingInvoices() {
+    this.isWatching = false
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
   }
 }
 

@@ -206,20 +206,36 @@ class PhoenixdBackend extends Backend {
         })
 
         res.on('end', () => {
+          if (!this.isWatching) return
           console.warn('Phoenixd SSE stream ended. Reconnecting in 3s...')
           this.reconnectTimer = setTimeout(connectSSE, 3000)
+          if (this.reconnectTimer && typeof this.reconnectTimer.unref === 'function') {
+            this.reconnectTimer.unref()
+          }
         })
       })
 
       req.on('error', (err) => {
+        if (!this.isWatching) return
         console.warn('Phoenixd SSE stream error:', err.message)
         this.reconnectTimer = setTimeout(connectSSE, 5000)
+        if (this.reconnectTimer && typeof this.reconnectTimer.unref === 'function') {
+          this.reconnectTimer.unref()
+        }
       })
 
       req.end()
     }
 
     connectSSE()
+  }
+
+  stopWatchingInvoices() {
+    this.isWatching = false
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
   }
 }
 

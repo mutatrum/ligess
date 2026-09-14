@@ -65,6 +65,10 @@ class Backend extends EventEmitter {
     this.startWatchingInvoices()
     return this
   }
+
+  stopWatchingInvoices() {
+    this.isWatching = false
+  }
 }
 
 module.exports = Backend

@@ -132,7 +132,7 @@ function registerRoutes(fastify) {
       .map(r => r.trim())
       .filter(r => r.startsWith('ws://') || r.startsWith('wss://'))
 
-    if (outboundRelays.length > 0) {
+    if (outboundRelays.length > 0 && process.env.NODE_ENV !== 'test') {
       startOutboundRelayClient(outboundRelays, fastify.log)
     }
   }
@@ -245,10 +245,15 @@ function registerRoutes(fastify) {
   })
 
   // Listen for invoice updates to publish zap receipts
-  if (_nostrZapperPubKey) {
+  if (_nostrZapperPubKey && process.env.NODE_ENV !== 'test') {
     try {
       const lnClient = getLnClient()
       lnClient.watchInvoices().on('invoice-updated', (invoice) => handleInvoiceUpdate(invoice, fastify.log))
+      fastify.addHook('onClose', async () => {
+        if (typeof lnClient.stopWatchingInvoices === 'function') {
+          lnClient.stopWatchingInvoices()
+        }
+      })
     } catch (e) {
       // Backend may be initialized lazily
     }
