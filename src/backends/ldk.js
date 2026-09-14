@@ -1,7 +1,7 @@
 const http = require('http')
 const https = require('https')
 const Backend = require('./base')
-const bolt11Decoder = require('bolt11')
+const bolt11Decoder = require('../clients/bolt11')
 
 let SocksProxyAgent = null
 try {

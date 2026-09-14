@@ -1,6 +1,6 @@
 const Backend = require('./base')
 const { Mint, Wallet, MintQuoteState } = require('@cashu/cashu-ts')
-const bolt11Decoder = require('bolt11')
+const bolt11Decoder = require('../clients/bolt11')
 
 class CashuBackend extends Backend {
   constructor({ mintUrl, socksProxyUrl = null }) {
