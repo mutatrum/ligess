@@ -1,6 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
+const { verifyBip353Dns } = require("../../bin/bip353")
 
 const checkLegacyFiles = (env = process.env, cwd = process.cwd()) => {
   const warnings = []
@@ -36,8 +37,32 @@ const checkLegacyFiles = (env = process.env, cwd = process.cwd()) => {
   return warnings
 }
 
+const checkBip353OnStartup = (env = process.env) => {
+  if (!env.LIGESS_BOLT12_OFFER) return null
+  const user = env.LIGESS_USERNAME
+  const domain = env.LIGESS_DOMAIN
+  if (!user || !domain) return null
+
+  // Non-blocking asynchronous DNS check so server boot is instantaneous
+  return verifyBip353Dns(user, domain, env.LIGESS_BOLT12_OFFER)
+    .then((res) => {
+      if (res.status === "FOUND") {
+        if (res.matches) {
+          console.log(`\x1b[32m✔ [BIP-353]\x1b[0m DNS TXT record verified for ${user}@${domain}`)
+        } else {
+          console.warn(`\x1b[33m⚠ [BIP-353]\x1b[0m DNS TXT record found for ${user}@${domain}, but offer does not match LIGESS_BOLT12_OFFER!`)
+        }
+      } else {
+        console.warn(`\x1b[33m⚠ [BIP-353]\x1b[0m No live DNS TXT record found for ${user}.user._bitcoin-payment.${domain} (${res.error}). Run "npm run bip353" for setup.`)
+      }
+      return res
+    })
+    .catch(() => {})
+}
+
 const startup = (env = process.env) => {
   checkLegacyFiles(env)
+  checkBip353OnStartup(env)
 
   const requiredKeys = ["LIGESS_USERNAME", "LIGESS_DOMAIN", "LIGESS_LN_BACKEND"]
   checkKeys(requiredKeys, env)
@@ -107,4 +132,4 @@ const checkKeys = (keys, env = process.env) => {
   }
 }
 
-module.exports = { startup, checkLegacyFiles }
+module.exports = { startup, checkLegacyFiles, checkBip353OnStartup }
