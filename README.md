@@ -27,6 +27,8 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 - 🛡️ **Zero-Loss Persistence Engine**:
   - Atomic, durable file-backed persistence (`data/pending_zaps.json` and `data/zaps.json`) with atomic temporary file swapping.
   - In-flight zaps survive node and server restarts without dropping kind 9735 zap receipts.
+- 💬 **LUD-09 LNURL-pay Success Actions**:
+  - Configurable post-payment thank-you notes or external URLs (`LIGESS_SUCCESS_MESSAGE`, `LIGESS_SUCCESS_URL`) automatically displayed in compatible Lightning wallets (Phoenix, Zeus, Alby, Wallet of Satoshi, Breez).
 - 🔮 **Nostr Stack Upgrade (`nostr-tools v2`)**:
   - Full support for **hex** and **bech32** keys (`nsec1...`, `npub1...`).
   - **NIP-05 DNS Verification**: Built-in `GET /.well-known/nostr.json?name=<username>`.

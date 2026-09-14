@@ -1,3 +1,30 @@
+/**
+ * LUD-09: LNURL-pay successAction (message or url)
+ */
+function getSuccessAction(env = process.env) {
+  if (env.LIGESS_SUCCESS_URL) {
+    const url = env.LIGESS_SUCCESS_URL.trim();
+    const description = (env.LIGESS_SUCCESS_URL_DESCRIPTION || "Thank you! Visit website:").slice(0, 144);
+    return {
+      tag: "url",
+      description,
+      url
+    };
+  }
+
+  if (env.LIGESS_SUCCESS_MESSAGE) {
+    const message = env.LIGESS_SUCCESS_MESSAGE.trim().slice(0, 144);
+    if (message.length > 0) {
+      return {
+        tag: "message",
+        message
+      };
+    }
+  }
+
+  return null;
+}
+
 const { bech32 } = require('bech32')
 const crypto = require('crypto')
 const { getLnClient } = require('../backends/factory')
@@ -197,11 +224,18 @@ function registerRoutes(fastify) {
 
         reply.log.info({ msg: 'Invoice created', hash: invoice.paymentHash, amount: numberOfMsats, comment })
 
-        return {
+        const responsePayload = {
           pr: invoice.bolt11,
           routes: [],
           disposable: false,
         }
+
+        const successAction = getSuccessAction()
+        if (successAction) {
+          responsePayload.successAction = successAction
+        }
+
+        return responsePayload
       }
     } catch (error) {
       const result = { status: 'ERROR', reason: `An error occurred while getting invoice: ${error.message}` }
@@ -221,4 +255,4 @@ function registerRoutes(fastify) {
   }
 }
 
-module.exports = { registerRoutes }
+module.exports = { registerRoutes, getSuccessAction }

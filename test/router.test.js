@@ -10,6 +10,7 @@ process.env.LIGESS_LND_MACAROON = '00'
 process.env.LIGESS_NOSTR_PUBKEY = '4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff'
 
 const { buildApp } = require('../src/app')
+const { getSuccessAction } = require('../src/web/router')
 const fastify = buildApp({ logger: false })
 
 test('Router & HTTP Endpoints', async (t) => {
@@ -79,6 +80,37 @@ test('Router & HTTP Endpoints', async (t) => {
     assert.equal(body.tag, 'payRequest')
     assert.equal(body.minSendable, 1000)
   })
+
+  await t.test("should return null for getSuccessAction when not configured", () => {
+    assert.equal(getSuccessAction({}), null);
+    assert.equal(getSuccessAction({ LIGESS_SUCCESS_MESSAGE: "" }), null);
+  });
+
+  await t.test("should return message successAction per LUD-09", () => {
+    const action = getSuccessAction({ LIGESS_SUCCESS_MESSAGE: "Thank you for the sats!" });
+    assert.deepEqual(action, {
+      tag: "message",
+      message: "Thank you for the sats!"
+    });
+  });
+
+  await t.test("should truncate LUD-09 message to 144 characters", () => {
+    const longMsg = "a".repeat(200);
+    const action = getSuccessAction({ LIGESS_SUCCESS_MESSAGE: longMsg });
+    assert.equal(action.message.length, 144);
+  });
+
+  await t.test("should return url successAction per LUD-09", () => {
+    const action = getSuccessAction({
+      LIGESS_SUCCESS_URL: "https://example.com/receipt",
+      LIGESS_SUCCESS_URL_DESCRIPTION: "View your receipt here"
+    });
+    assert.deepEqual(action, {
+      tag: "url",
+      description: "View your receipt here",
+      url: "https://example.com/receipt"
+    });
+  });
 
   await t.test('should return 404 for unknown user on LNURL-pay endpoint', async () => {
     const res = await fastify.inject({
