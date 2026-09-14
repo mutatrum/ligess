@@ -1,37 +1,29 @@
-const fs = require('fs')
-const path = require('path')
-const { getProfileMetadata } = require('../nostr/metadata')
+const { getProfileMetadata } = require("../nostr/metadata")
 
 function escapeHtml(str) {
-  if (!str) return ''
+  if (!str) return ""
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-function getMetadata() {
-  const metaFile = process.env.LIGESS_NOSTR_METADATA_FILE
-  if (metaFile && fs.existsSync(metaFile)) {
-    try {
-      return JSON.parse(fs.readFileSync(metaFile, 'utf8'))
-    } catch (e) {
-      // fallback
-    }
-  }
-  return {}
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }
 
 function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null }) {
   const meta = getProfileMetadata()
   const displayName = escapeHtml(meta.display_name || meta.name || username)
-  const about = escapeHtml(meta.about || `Send Bitcoin instantly via Lightning Address or Nostr Zaps.`)
+  const about = escapeHtml(meta.about || "Send Bitcoin instantly via Lightning Address or Nostr Zaps.")
   const picture = meta.picture ? escapeHtml(meta.picture) : null
   const safeIdentifier = escapeHtml(identifier)
-  const safeLnurl = escapeHtml(lnurlBech32)
   const safeBolt12 = bolt12Offer ? escapeHtml(bolt12Offer) : null
+
+  // BIP-21 Unified Payment URI: combines LNURL-pay and reusable BOLT12 offer without on-chain address reuse
+  const unifiedPaymentUri = bolt12Offer
+    ? "bitcoin:?lightning=" + encodeURIComponent(lnurlBech32) + "&lno=" + encodeURIComponent(bolt12Offer)
+    : "lightning:" + encodeURIComponent(lnurlBech32)
+
+  const qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(unifiedPaymentUri) + "&margin=10"
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -91,7 +83,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     .card::before {
-      content: '';
+      content: "";
       position: absolute;
       top: -120px;
       left: 50%;
@@ -104,7 +96,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .profile-header {
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       position: relative;
     }
 
@@ -126,85 +118,65 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     .display-name {
-      font-size: 26px;
-      font-weight: 800;
+      font-size: 24px;
+      font-weight: 700;
       letter-spacing: -0.02em;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
     .badge-handle {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
       color: #fbbf24;
       padding: 6px 14px;
       border-radius: 999px;
       font-size: 14px;
       font-weight: 600;
+      margin-bottom: 12px;
       cursor: pointer;
       transition: var(--transition);
       user-select: none;
     }
 
     .badge-handle:hover {
-      background: rgba(245, 158, 11, 0.22);
+      background: rgba(245, 158, 11, 0.2);
       transform: translateY(-1px);
-    }
-
-    .badge-handle:active {
-      transform: scale(0.97);
     }
 
     .about {
       color: var(--text-muted);
       font-size: 14px;
       line-height: 1.5;
-      margin-top: 14px;
+      max-width: 380px;
+      margin: 0 auto;
     }
 
-    /* Tabs */
-    .tabs {
-      display: flex;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 12px;
-      padding: 4px;
-      margin: 20px 0;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+    /* Unified QR Code Container */
+    .qr-wrapper {
+      text-align: center;
+      margin: 20px auto 16px;
     }
 
-    .tab-btn {
-      flex: 1;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      background: transparent;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .tab-btn.active {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    /* QR Code Container */
     .qr-container {
       background: #ffffff;
       border-radius: 16px;
       padding: 16px;
-      margin: 16px auto;
+      margin: 0 auto 10px;
       width: 220px;
       height: 220px;
       display: flex;
       align-items: center;
       justify-content: center;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      transition: var(--transition);
+    }
+
+    .qr-container:hover {
+      transform: scale(1.02);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.2);
     }
 
     .qr-container img {
@@ -213,12 +185,60 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       image-rendering: pixelated;
     }
 
+    .qr-caption {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .qr-caption span {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .offer-details {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .offer-details summary {
+      cursor: pointer;
+      user-select: none;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .offer-details summary:hover {
+      color: var(--text-main);
+    }
+
+    .offer-details code {
+      display: block;
+      word-break: break-all;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      font-size: 11px;
+      font-family: monospace;
+      user-select: all;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      text-align: left;
+    }
+
     /* Payment Actions */
     .actions {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      margin-top: 24px;
+      margin-top: 20px;
     }
 
     .btn {
@@ -333,26 +353,21 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         <p class="about">${about}</p>
       </div>
 
-      <div class="tabs">
-        <button class="tab-btn active" id="tabLnurl" onclick="switchTab('lnurl')">⚡ Lightning Address</button>
-        ${safeBolt12 ? `<button class="tab-btn" id="tabBolt12" onclick="switchTab('bolt12')">📜 BOLT12 Offer</button>` : ''}
-      </div>
-
-      <div id="viewLnurl">
+      <div class="qr-wrapper">
         <div class="qr-container">
-          <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(safeIdentifier)}&margin=10" alt="Lightning QR">
+          <a href="${unifiedPaymentUri}" title="Scan or click to open in your Bitcoin / Lightning wallet">
+            <img id="qrImage" src="${qrImageUrl}" alt="Unified Bitcoin & Lightning QR">
+          </a>
         </div>
+        <div class="qr-caption">
+          <span>${safeBolt12 ? "⚡ Unified Lightning & BOLT12 QR" : "⚡ Lightning Network QR"}</span>
+        </div>
+        ${safeBolt12 ? `
+        <details class="offer-details">
+          <summary>View BOLT12 Offer</summary>
+          <code>${safeBolt12}</code>
+        </details>` : ""}
       </div>
-
-      ${safeBolt12 ? `
-      <div id="viewBolt12" style="display: none;">
-        <div class="qr-container">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(safeBolt12)}&margin=10" alt="BOLT12 QR">
-        </div>
-        <p style="font-size: 11px; color: var(--text-muted); text-align: center; word-break: break-all; padding: 0 10px;">
-          ${safeBolt12}
-        </p>
-      </div>` : ''}
 
       <div class="amount-presets">
         <button class="preset-btn active" onclick="selectAmount(21)">21 sats</button>
@@ -385,66 +400,55 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     const identifier = "${safeIdentifier}";
 
     function showToast(msg) {
-      const toast = document.getElementById('toast');
+      const toast = document.getElementById("toast");
       toast.textContent = msg;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2200);
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2200);
     }
 
     function copyAddress() {
       navigator.clipboard.writeText(identifier).then(() => {
-        showToast('⚡ Address copied to clipboard!');
+        showToast("⚡ Address copied to clipboard!");
       });
     }
 
-    document.getElementById('copyBadge').addEventListener('click', copyAddress);
+    document.getElementById("copyBadge").addEventListener("click", copyAddress);
 
     function selectAmount(sats) {
       currentSats = sats;
-      document.querySelectorAll('.preset-btn').forEach(b => {
-        b.classList.toggle('active', b.textContent.includes(sats.toLocaleString()));
+      document.querySelectorAll(".preset-btn").forEach(b => {
+        b.classList.toggle("active", b.textContent.includes(sats.toLocaleString()));
       });
-      document.getElementById('btnAmountText').textContent = sats.toLocaleString();
-    }
-
-    function switchTab(type) {
-      const isLnurl = type === 'lnurl';
-      document.getElementById('tabLnurl').classList.toggle('active', isLnurl);
-      const tabB12 = document.getElementById('tabBolt12');
-      if (tabB12) tabB12.classList.toggle('active', !isLnurl);
-
-      document.getElementById('viewLnurl').style.display = isLnurl ? 'block' : 'none';
-      const viewB12 = document.getElementById('viewBolt12');
-      if (viewB12) viewB12.style.display = !isLnurl ? 'block' : 'none';
+      document.getElementById("btnAmountText").textContent = sats.toLocaleString();
     }
 
     async function payWithWebLN() {
-      const btn = document.getElementById('weblnBtn');
+      const btn = document.getElementById("weblnBtn");
       const originalText = btn.innerHTML;
       try {
         if (!window.webln) {
-          showToast('No WebLN wallet found (install Alby or Zeus extension)');
+          showToast("No WebLN wallet found (install Alby or Zeus extension)");
           return;
         }
         btn.disabled = true;
-        btn.innerHTML = '<span>⏳</span><span>Requesting invoice...</span>';
+        btn.innerHTML = "<span>⏳</span><span>Requesting invoice...</span>";
 
         await window.webln.enable();
 
         const msats = currentSats * 1000;
-        const res = await fetch(\`/.well-known/lnurlp/${encodeURIComponent(username)}?amount=\${msats}\`);
+        const res = await fetch("/.well-known/lnurlp/" + encodeURIComponent(identifier.split("@")[0]) + "?amount=" + msats);
         const data = await res.json();
 
-        if (data.status === 'ERROR') {
-          throw new Error(data.reason || 'Failed to get invoice');
+        if (data.status === "ERROR") {
+          throw new Error(data.reason || "Failed to get invoice");
         }
 
-        btn.innerHTML = '<span>⚡</span><span>Confirm in wallet...</span>';
+        btn.innerHTML = "<span>⚡</span><span>Confirm in wallet...</span>";
         const paymentRes = await window.webln.sendPayment(data.pr);
 
-        showToast('🎉 Payment successful! Preimage: ' + paymentRes.preimage.slice(0, 8) + '...');
+        showToast("🎉 Payment successful! Preimage: " + paymentRes.preimage.slice(0, 8) + "...");
       } catch (err) {
-        showToast('Payment cancelled or failed: ' + err.message);
+        showToast("Payment cancelled or failed: " + err.message);
       } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
