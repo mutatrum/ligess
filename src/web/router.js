@@ -118,7 +118,7 @@ function registerRoutes(fastify) {
     const meta = getProfileMetadata()
     const picture = meta.picture || process.env.LIGESS_RELAY_ICON
     if (picture && !picture.startsWith('data:')) {
-      return reply.redirect(302, picture)
+      return reply.redirect(picture)
     }
     reply.type('image/svg+xml')
     reply.header('Cache-Control', 'public, max-age=86400')
