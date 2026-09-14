@@ -27,8 +27,14 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 - 🛡️ **Zero-Loss Persistence Engine**:
   - Atomic, durable file-backed persistence (`data/pending_zaps.json` and `data/zaps.json`) with atomic temporary file swapping.
   - In-flight zaps survive node and server restarts without dropping kind 9735 zap receipts.
-- 💬 **LUD-09 LNURL-pay Success Actions**:
-  - Configurable post-payment thank-you notes or external URLs (`LIGESS_SUCCESS_MESSAGE`, `LIGESS_SUCCESS_URL`) automatically displayed in compatible Lightning wallets (Phoenix, Zeus, Alby, Wallet of Satoshi, Breez).
+- 🌐 **Comprehensive LNURL Suite (10 Supported LUDs)**:
+  - Implements **LUD-01**, **LUD-06**, **LUD-09**, **LUD-11**, **LUD-12**, **LUD-16**, **LUD-17**, **LUD-18**, **LUD-20**, and **LUD-21**.
+  - **Payer Identity (LUD-18)**: Advertises optional `payerData` (name, identifier, email, pubkey) and captures payer details directly into invoice memos.
+  - **Payment Verification (LUD-21)**: Provides `/verify/:paymentHash` endpoints for third-party invoice settlement checks without exposing node credentials.
+  - **Long Descriptions (LUD-20)**: Rich payment bios via `text/long-desc` on wallet pay screens.
+  - **Protocol Schemes (LUD-17)**: Direct wallet deep-linking with raw `lnurlp://` URIs.
+  - **Success Actions & Comments (LUD-09 / LUD-12)**: Post-payment notes/URLs (`LIGESS_SUCCESS_MESSAGE`, `LIGESS_SUCCESS_URL`) and up to 280-character comments.
+  - **Storable Links (LUD-11)**: Returns `disposable: false` so wallets can bookmark and reuse your address.
 - 🔮 **Nostr Stack Upgrade (`nostr-tools v2`)**:
   - Full support for **hex** and **bech32** keys (`nsec1...`, `npub1...`).
   - **NIP-05 DNS Verification**: Built-in `GET /.well-known/nostr.json?name=<username>`.
@@ -95,10 +101,16 @@ Ligess is built to be a fully standards-compliant personal sovereign payment ser
 
 | Specification | Title | Status | Implementation in Ligess |
 | :--- | :--- | :---: | :--- |
-| **[LUD-01](https://github.com/lnurl/luds/blob/luds/01.md) / [LUD-06](https://github.com/lnurl/luds/blob/luds/06.md)** | Base LNURL & payRequest | ✅ | `GET /.well-known/lnurlp/:user` endpoint and callback handlers |
+| **[LUD-01](https://github.com/lnurl/luds/blob/luds/01.md)** | Base LNURL Encoding | ✅ | `lnurl1...` bech32 generation, parsing, and QR codes |
+| **[LUD-06](https://github.com/lnurl/luds/blob/luds/06.md)** | `payRequest` Base Protocol | ✅ | `GET /.well-known/lnurlp/:user` callback flow and parameter negotiation |
 | **[LUD-09](https://github.com/lnurl/luds/blob/luds/09.md)** | LNURL-pay `successAction` | ✅ | Configurable post-payment thank-you notes and external URLs (`LIGESS_SUCCESS_MESSAGE`, `LIGESS_SUCCESS_URL`) |
-| **[LUD-12](https://github.com/lnurl/luds/blob/luds/12.md)** | Comments in LNURL-pay | ✅ | Up to 280-character comments preserved and passed to node invoice memos |
-| **[LUD-16](https://github.com/lnurl/luds/blob/luds/16.md)** | Lightning Address | ✅ | `username@domain.com` resolution and URL mapping |
+| **[LUD-11](https://github.com/lnurl/luds/blob/luds/11.md)** | Storable `payRequest`s | ✅ | Explicit `"disposable": false` returned in invoice callbacks for wallet bookmarking |
+| **[LUD-12](https://github.com/lnurl/luds/blob/luds/12.md)** | Comments in LNURL-pay | ✅ | Up to 280-character comments preserved and attached to node invoice memos |
+| **[LUD-16](https://github.com/lnurl/luds/blob/luds/16.md)** | Lightning Address | ✅ | `username@domain.com` internet identifier resolution and mapping |
+| **[LUD-17](https://github.com/lnurl/luds/blob/luds/17.md)** | Protocol Schemes & Raw URLs | ✅ | Raw `lnurlp://` scheme exposed on `GET /` and web portal deep-linking |
+| **[LUD-18](https://github.com/lnurl/luds/blob/luds/18.md)** | Payer Identity (`payerData`) | ✅ | Advertises optional payerData (name, identifier, email, pubkey) and attaches to invoice memos |
+| **[LUD-20](https://github.com/lnurl/luds/blob/luds/20.md)** | Long Payment Description | ✅ | `text/long-desc` entry in metadata and invoice description hashes (`LIGESS_LONG_DESCRIPTION`) |
+| **[LUD-21](https://github.com/lnurl/luds/blob/luds/21.md)** | Payment Verification Endpoint | ✅ | `verify` callback URL and `GET /verify/:paymentHash` invoice settlement query |
 | **[BOLT #11](https://github.com/lightning/bolts/blob/master/11-payment-encoding.md)** | Invoice Protocol | ✅ | Zero-dependency Bech32 invoice parsing and validation |
 | **[BOLT #12](https://github.com/lightning/bolts/blob/master/12-offer-encoding.md)** | Offers Protocol | ✅ | Native `lno1...` offers, Alphanumeric QR codes, NWC `pay_offer`, and LNDK |
 
@@ -253,6 +265,21 @@ LIGESS_NOSTR_BANNER="https://yourdomain.com/banner.png"
 LIGESS_NOSTR_WEBSITE="https://yourdomain.com"
 ```
 *(Note: Legacy `metadata.json` and `LIGESS_NOSTR_METADATA_FILE` are deprecated; a warning will be logged on startup if detected.)*
+
+### LNURL-pay Customization (LUD-09, LUD-18, LUD-20)
+You can configure post-payment actions, payer identity requests, and detailed payment bios in `.env`:
+```env
+# LUD-09: Post-payment successAction (message or URL)
+LIGESS_SUCCESS_MESSAGE="Thank you for supporting sovereign open-source!"
+# LIGESS_SUCCESS_URL="https://yourdomain.com/thanks"
+# LIGESS_SUCCESS_URL_DESCRIPTION="View details on website"
+
+# LUD-20: Long description displayed on wallet pay screens (defaults to LIGESS_NOSTR_ABOUT)
+LIGESS_LONG_DESCRIPTION="Support my sovereign Bitcoin, Lightning, and Nostr software development."
+
+# LUD-18: Payer identity (name, identifier, email, pubkey) request (default: true, all fields optional)
+LIGESS_PAYER_DATA_ENABLED=true
+```
 
 ---
 

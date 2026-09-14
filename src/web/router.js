@@ -33,14 +33,27 @@ const { isWalletConnectEnabled, getWalletConnectHandler, getWalletConnectWsHandl
 const { parsePublicKey } = require('../nostr/crypto')
 const { getProfileMetadata } = require('../nostr/metadata')
 const { renderLandingPage, DEFAULT_FAVICON_SVG } = require('./landingPage')
-const { REPO_URL } = require('../config/constants')
+const { REPO_URL, DEFAULT_PAYER_DATA_CONFIG } = require('../config/constants')
+
+function buildMetadata(identifier, env = process.env) {
+  const meta = getProfileMetadata(env)
+  const metadata = [
+    ['text/identifier', identifier],
+    ['text/plain', `Satoshis to ${identifier}`]
+  ]
+  const longDesc = env.LIGESS_LONG_DESCRIPTION || (meta && meta.about)
+  if (longDesc && longDesc !== `Satoshis to ${identifier}`) {
+    metadata.push(['text/long-desc', longDesc])
+  }
+  return metadata
+}
 
 function registerRoutes(fastify) {
   const _username = process.env.LIGESS_USERNAME
   const _domain = process.env.LIGESS_DOMAIN
   const _identifier = `${_username}@${_domain}`
   const _lnurlpUrl = `https://${_domain}/.well-known/lnurlp/${_username}`
-  const _metadata = [['text/identifier', _identifier], ['text/plain', `Satoshis to ${_identifier}`]]
+  const _rawSchemeUrl = `lnurlp://${_domain}/.well-known/lnurlp/${_username}`
   const _nostrZapperPubKey = getNostrZapperPubKey()
   const _nostrProfilePubKey = process.env.LIGESS_NOSTR_PUBKEY ? parsePublicKey(process.env.LIGESS_NOSTR_PUBKEY) : _nostrZapperPubKey
 
@@ -97,12 +110,14 @@ function registerRoutes(fastify) {
           identifier: _identifier,
           lnurlBech32: lnurlpBech32,
           bolt12Offer: process.env.LIGESS_BOLT12_OFFER || null,
-          repoUrl: REPO_URL
+          repoUrl: REPO_URL,
+          lnurlpUrl: _rawSchemeUrl
         })
       }
 
       return {
         lnurlp: lnurlpBech32,
+        lnurlpUrl: _rawSchemeUrl,
         decodedUrl: _lnurlpUrl,
         info: {
           title: 'Ligess: Lightning address personal server',
@@ -184,6 +199,8 @@ function registerRoutes(fastify) {
         return
       }
 
+      const metadata = buildMetadata(_identifier)
+
       if (!request.query.amount) {
         const result = {
           status: 'OK',
@@ -191,12 +208,16 @@ function registerRoutes(fastify) {
           tag: 'payRequest',
           maxSendable: 100000000,
           minSendable: 1000,
-          metadata: JSON.stringify(_metadata),
+          metadata: JSON.stringify(metadata),
           commentAllowed: 280,
         }
         if (_nostrZapperPubKey) {
           result.allowsNostr = true
           result.nostrPubkey = _nostrZapperPubKey
+        }
+        const isPayerDataEnabled = process.env.LIGESS_PAYER_DATA_ENABLED !== 'false'
+        if (isPayerDataEnabled) {
+          result.payerData = DEFAULT_PAYER_DATA_CONFIG
         }
         return result
       } else {
@@ -233,8 +254,45 @@ function registerRoutes(fastify) {
           return
         }
 
+        let payerData = null
+        if (request.query.payerdata) {
+          try {
+            payerData = typeof request.query.payerdata === 'string'
+              ? JSON.parse(request.query.payerdata)
+              : request.query.payerdata
+          } catch (e) {
+            const result = { status: 'ERROR', reason: 'Invalid payerdata JSON' }
+            request.log.warn(result)
+            reply.code(400).send(result)
+            return
+          }
+        }
+
+        if (payerData && typeof payerData === 'object') {
+          for (const [key, conf] of Object.entries(DEFAULT_PAYER_DATA_CONFIG)) {
+            if (conf && conf.mandatory && !payerData[key]) {
+              const result = { status: 'ERROR', reason: `Missing mandatory payerData field: ${key}` }
+              request.log.warn(result)
+              reply.code(400).send(result)
+              return
+            }
+          }
+        }
+
+        let payerDesc = ''
+        if (payerData && typeof payerData === 'object') {
+          const parts = []
+          if (payerData.name) parts.push(payerData.name)
+          if (payerData.identifier) parts.push(`<${payerData.identifier}>`)
+          else if (payerData.email) parts.push(`<${payerData.email}>`)
+          else if (payerData.pubkey) parts.push(`[${payerData.pubkey.slice(0, 8)}]`)
+          if (parts.length > 0) payerDesc = parts.join(' ')
+        }
+
         let memo = _identifier
-        if (comment) memo = `${_identifier}: ${comment}`
+        if (payerDesc && comment) memo = `${_identifier}: from ${payerDesc} - ${comment}`
+        else if (payerDesc) memo = `${_identifier}: from ${payerDesc}`
+        else if (comment) memo = `${_identifier}: ${comment}`
 
         let descriptionHash = null
         let zapRequest = null
@@ -244,7 +302,7 @@ function registerRoutes(fastify) {
           const hash = crypto.createHash('sha256').update(request.query.nostr).digest('hex')
           descriptionHash = hash
         } else {
-          const hash = crypto.createHash('sha256').update(JSON.stringify(_metadata)).digest('hex')
+          const hash = crypto.createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
           descriptionHash = hash
         }
 
@@ -259,12 +317,21 @@ function registerRoutes(fastify) {
           storePendingZapRequest(invoice.paymentHash, zapRequest, comment)
         }
 
-        reply.log.info({ msg: 'Invoice created', hash: invoice.paymentHash, amount: numberOfMsats, comment })
+        reply.log.info({
+          msg: 'Invoice created',
+          hash: invoice.paymentHash,
+          amount: numberOfMsats,
+          comment,
+          ...(payerData ? { payer: payerData } : {})
+        })
+
+        const verifyUrl = `https://${_domain}/verify/${invoice.paymentHash}`
 
         const responsePayload = {
           pr: invoice.bolt11,
           routes: [],
           disposable: false,
+          verify: verifyUrl,
         }
 
         const successAction = getSuccessAction()
@@ -280,6 +347,48 @@ function registerRoutes(fastify) {
       reply.code(400).send(result)
     }
   })
+
+  // LUD-21: Payment verification endpoints
+  const verifyHandler = async (request, reply) => {
+    const { paymentHash } = request.params
+    if (!paymentHash || !/^[a-f0-9]{64}$/i.test(paymentHash)) {
+      const result = { status: 'ERROR', reason: 'Invalid payment hash' }
+      request.log.warn(result)
+      reply.code(400).send(result)
+      return
+    }
+
+    try {
+      const lnClient = getLnClient()
+      const invoice = await lnClient.getInvoice(paymentHash)
+      if (!invoice) {
+        const result = { status: 'ERROR', reason: 'Invoice not found' }
+        reply.code(404).send(result)
+        return
+      }
+
+      if (invoice.settled) {
+        return {
+          status: 'OK',
+          settled: true,
+          preimage: invoice.preImage || invoice.preimage || null,
+          pr: invoice.bolt11 || null
+        }
+      } else {
+        return {
+          status: 'OK',
+          settled: false,
+          preimage: null,
+          pr: invoice.bolt11 || null
+        }
+      }
+    } catch (error) {
+      reply.code(404).send({ status: 'ERROR', reason: error.message || 'Invoice not found' })
+    }
+  }
+
+  fastify.get('/verify/:paymentHash', verifyHandler)
+  fastify.get('/.well-known/lnurlp/verify/:paymentHash', verifyHandler)
 
   // Listen for invoice updates to publish zap receipts
   if (_nostrZapperPubKey && process.env.NODE_ENV !== 'test') {
@@ -297,4 +406,4 @@ function registerRoutes(fastify) {
   }
 }
 
-module.exports = { registerRoutes, getSuccessAction }
+module.exports = { registerRoutes, getSuccessAction, buildMetadata }

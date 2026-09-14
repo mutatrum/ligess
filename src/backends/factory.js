@@ -89,7 +89,13 @@ const getLnClient = () => {
   return _singletonClient
 }
 
+const setLnClient = (client) => {
+  _singletonClient = client
+}
+
 module.exports = {
   createBackend,
-  getLnClient
+  getLnClient,
+  setLnClient
 }
+

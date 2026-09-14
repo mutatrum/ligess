@@ -15,13 +15,14 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;")
 }
 
-function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL, picture: customPicture = null }) {
+function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL, picture: customPicture = null, lnurlpUrl = null }) {
   const meta = getProfileMetadata()
   const displayName = escapeHtml(meta.display_name || meta.name || username)
   const about = escapeHtml(meta.about || "Send Bitcoin instantly via Lightning Address or Nostr Zaps.")
   const picture = customPicture ? escapeHtml(customPicture) : (meta.picture ? escapeHtml(meta.picture) : (process.env.LIGESS_RELAY_ICON ? escapeHtml(process.env.LIGESS_RELAY_ICON) : null))
   const safeIdentifier = escapeHtml(identifier)
   const safeBolt12 = bolt12Offer ? escapeHtml(bolt12Offer) : null
+  const safeLnurlpUrl = escapeHtml(lnurlpUrl || ("lnurlp://" + domain + "/.well-known/lnurlp/" + username))
 
   // Universal Lightning Address & BIP-353 URI (ultra-compact 25x25 grid, scans in <0.02s)
   const lightningAddressUri = "lightning:" + safeIdentifier
@@ -426,10 +427,13 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
           <span>⚡ Scan with any Lightning or BIP-353 wallet</span>
         </div>
         <details class="offer-details">
-          <summary>Need legacy Bech32 (LNURL)?</summary>
+          <summary>Need LNURL / Bech32 links?</summary>
           <div style="margin-top:12px;text-align:center;">
             <div style="width:180px;height:180px;margin:0 auto;">${legacyLnurlSvg}</div>
             <code style="display:block;margin-top:8px;word-break:break-all;font-size:11px;">${legacyLnurlUri}</code>
+            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
+              <span>LUD-17 scheme: </span><a href="${safeLnurlpUrl}" style="color:#fbbf24;word-break:break-all;">${safeLnurlpUrl}</a>
+            </div>
           </div>
         </details>
       </div>
