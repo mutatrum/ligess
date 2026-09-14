@@ -1,3 +1,4 @@
+const { REPO_URL } = require("../config/constants")
 const { getProfileMetadata } = require("../nostr/metadata")
 const { generateQrSvg } = require("./qrSvg")
 
@@ -11,7 +12,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;")
 }
 
-function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null }) {
+function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL }) {
   const meta = getProfileMetadata()
   const displayName = escapeHtml(meta.display_name || meta.name || username)
   const about = escapeHtml(meta.about || "Send Bitcoin instantly via Lightning Address or Nostr Zaps.")
@@ -463,7 +464,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     </div>
 
     <div class="footer">
-      Powered by <a href="https://github.com/mutatrum/ligess" target="_blank" rel="noreferrer">Ligess Sovereign Server</a>
+      Powered by <a href="${escapeHtml(repoUrl)}" target="_blank" rel="noreferrer">Ligess Sovereign Server</a>
     </div>
   </div>
 

@@ -34,6 +34,7 @@ test('Router & HTTP Endpoints', async (t) => {
     const body = res.json()
     assert.ok(body.lnurlp.startsWith('lnurl1'))
     assert.equal(body.decodedUrl, 'https://ligess.example.com/.well-known/lnurlp/satoshi')
+    assert.equal(body.info.source, 'https://git.mutatrum.com/mutatrum/ligess')
   })
 
   await t.test('should render HTML landing page when Accept: text/html is requested', async () => {

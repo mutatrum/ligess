@@ -32,6 +32,7 @@ const { getNostrZapperPubKey, verifyZapRequest, storePendingZapRequest, handleIn
 const { isWalletConnectEnabled, getWalletConnectHandler, getWalletConnectWsHandler, startOutboundRelayClient } = require('../nostr/nwcServer')
 const { parsePublicKey } = require('../nostr/crypto')
 const { renderLandingPage } = require('./landingPage')
+const { REPO_URL } = require('../config/constants')
 
 function registerRoutes(fastify) {
   const _username = process.env.LIGESS_USERNAME
@@ -86,7 +87,8 @@ function registerRoutes(fastify) {
         domain: _domain,
         identifier: _identifier,
         lnurlBech32: lnurlpBech32,
-        bolt12Offer: process.env.LIGESS_BOLT12_OFFER || null
+        bolt12Offer: process.env.LIGESS_BOLT12_OFFER || null,
+        repoUrl: REPO_URL
       })
     }
 
@@ -95,7 +97,7 @@ function registerRoutes(fastify) {
       decodedUrl: _lnurlpUrl,
       info: {
         title: 'Ligess: Lightning address personal server',
-        source: 'https://github.com/mutatrum/ligess',
+        source: REPO_URL,
       },
     }
   })

@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Lightning address server",
   "main": "index.js",
-  "repository": "https://github.com/dolu89/ligess",
+  "repository": "https://git.mutatrum.com/mutatrum/ligess",
   "author": "dolu",
   "scripts": {
     "dev": "node --watch index.js",

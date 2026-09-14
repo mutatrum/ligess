@@ -75,7 +75,7 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 
 ### 1. Standalone Setup
 ```bash
-git clone https://github.com/mutatrum/ligess
+git clone https://git.mutatrum.com/mutatrum/ligess
 cd ligess
 npm install
 cp .env.example .env
@@ -95,7 +95,7 @@ npm test
 
 ### 2. Docker Compose
 ```bash
-git clone https://github.com/mutatrum/ligess
+git clone https://git.mutatrum.com/mutatrum/ligess
 cd ligess
 # Edit docker-compose.yml or mount your .env file
 docker-compose up -d
@@ -381,5 +381,5 @@ Tests cover:
 ## License & Credits
 MIT License.
 Original project created by [dolu89](https://github.com/dolu89/ligess).
-Nostr extensions and modernization by [mutatrum](https://github.com/mutatrum).
+Nostr extensions and modernization by [mutatrum](https://git.mutatrum.com/).
 Tips and zaps welcome at `mutatrum@hodl.camp`.

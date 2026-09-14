@@ -1,3 +1,5 @@
+const REPO_URL = "https://git.mutatrum.com/mutatrum/ligess"
+
 const BACKENDS = {
   LND: 'LND',
   LNbits: 'LNbits',
@@ -16,6 +18,7 @@ const TIME_WINDOWS = {
 }
 
 module.exports = {
+  REPO_URL,
   BACKENDS,
   TIME_WINDOWS,
   // Individual constant exports for backward compatibility

@@ -10,7 +10,7 @@ const crypto = require('crypto')
 const bolt11 = require('../clients/bolt11')
 const fs = require('fs')
 const db = require('../storage/db')
-const { TIME_WINDOWS } = require('../config/constants')
+const { TIME_WINDOWS, REPO_URL } = require('../config/constants')
 
 const _nostrWalletConnectEncryptPrivKey = parsePrivateKey(process.env.LIGESS_NOSTR_WALLET_CONNECT_PRIVATE_KEY)
 const _nostrWalletConnectEncryptPubKey = _nostrWalletConnectEncryptPrivKey ? getPublicKey(_nostrWalletConnectEncryptPrivKey) : null
@@ -60,7 +60,7 @@ function getRelayInformation(env = process.env) {
     pubkey,
     contact: env.LIGESS_RELAY_CONTACT || `${username}@${domain}`,
     supported_nips: nips,
-    software: "https://git.mutatrum.com/mutatrum/ligess",
+    software: REPO_URL,
     version: pkgVersion,
     limitation: {
       auth_required: Boolean(env.LIGESS_NOSTR_WALLET_CONNECT_PUBLIC_KEY)
