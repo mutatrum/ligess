@@ -1,4 +1,5 @@
 const { getProfileMetadata } = require("../nostr/metadata")
+const { generateQrSvg } = require("./qrSvg")
 
 function escapeHtml(str) {
   if (!str) return ""
@@ -23,7 +24,8 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     ? "bitcoin:?lightning=" + encodeURIComponent(lnurlBech32) + "&lno=" + encodeURIComponent(bolt12Offer)
     : "lightning:" + encodeURIComponent(lnurlBech32)
 
-  const qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(unifiedPaymentUri) + "&margin=10"
+  // Pure self-contained local SVG QR code with fixed pixel ratio & crispEdges
+  const qrSvg = generateQrSvg(unifiedPaymentUri)
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -154,7 +156,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       margin: 0 auto;
     }
 
-    /* Unified QR Code Container */
+    /* Fixed Pixel Ratio Self-Contained QR Container */
     .qr-wrapper {
       text-align: center;
       margin: 20px auto 16px;
@@ -163,15 +165,18 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .qr-container {
       background: #ffffff;
       border-radius: 16px;
-      padding: 16px;
-      margin: 0 auto 10px;
-      width: 220px;
-      height: 220px;
+      padding: 14px;
+      margin: 0 auto 12px;
+      width: 280px;
+      height: 280px;
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
       display: flex;
       align-items: center;
       justify-content: center;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
       transition: var(--transition);
+      overflow: hidden;
     }
 
     .qr-container:hover {
@@ -179,10 +184,17 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.2);
     }
 
-    .qr-container img {
+    .qr-container a {
+      display: block;
       width: 100%;
       height: 100%;
-      image-rendering: pixelated;
+    }
+
+    .qr-container svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      shape-rendering: crispEdges;
     }
 
     .qr-caption {
@@ -356,7 +368,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       <div class="qr-wrapper">
         <div class="qr-container">
           <a href="${unifiedPaymentUri}" title="Scan or click to open in your Bitcoin / Lightning wallet">
-            <img id="qrImage" src="${qrImageUrl}" alt="Unified Bitcoin & Lightning QR">
+            ${qrSvg}
           </a>
         </div>
         <div class="qr-caption">

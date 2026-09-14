@@ -45,6 +45,20 @@ describe("Landing Page Renderer", () => {
     assert.ok(!html.includes("View BOLT12 Offer"), "Should not show BOLT12 details")
   })
 
+  it("should generate self-contained inline SVG with crispEdges and no external image requests", () => {
+    const html = renderLandingPage({
+      username: "alice",
+      domain: "hodl.camp",
+      identifier: "alice@hodl.camp",
+      lnurlBech32: "lnurl1test",
+      bolt12Offer: "lno1test"
+    })
+
+    assert.ok(html.includes("<svg"), "Should contain inline SVG")
+    assert.ok(html.includes("shape-rendering=\"crispEdges\""), "Should have crispEdges shape rendering")
+    assert.ok(!html.includes("api.qrserver.com"), "Must not make external calls to api.qrserver.com")
+  })
+
   it("should escape potential XSS characters in username or display name", () => {
     const malicious = "<script>alert(\"xss\")</script>"
     const html = renderLandingPage({
