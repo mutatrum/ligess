@@ -122,5 +122,39 @@ test('Router & HTTP Endpoints', async (t) => {
     assert.equal(res.statusCode, 404)
   })
 
+  await t.test('should return default SVG favicon on /favicon.ico when no picture is set', async () => {
+    const res = await fastify.inject({
+      method: 'GET',
+      url: '/favicon.ico'
+    })
+    assert.equal(res.statusCode, 200)
+    assert.ok(res.headers['content-type'].includes('image/svg+xml'))
+    assert.ok(res.payload.includes('<svg'))
+  })
+
+  await t.test('should return default SVG favicon on /favicon.svg', async () => {
+    const res = await fastify.inject({
+      method: 'GET',
+      url: '/favicon.svg'
+    })
+    assert.equal(res.statusCode, 200)
+    assert.ok(res.headers['content-type'].includes('image/svg+xml'))
+    assert.ok(res.payload.includes('<svg'))
+  })
+
+  await t.test('should redirect /favicon.ico to supplied picture when configured', async () => {
+    process.env.LIGESS_NOSTR_PICTURE = 'https://example.com/avatar.png'
+    try {
+      const res = await fastify.inject({
+        method: 'GET',
+        url: '/favicon.ico'
+      })
+      assert.equal(res.statusCode, 302)
+      assert.equal(res.headers.location, 'https://example.com/avatar.png')
+    } finally {
+      delete process.env.LIGESS_NOSTR_PICTURE
+    }
+  })
+
   await fastify.close()
 })

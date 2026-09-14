@@ -105,4 +105,30 @@ describe('Landing Page Renderer', () => {
     assert.ok(!html.includes('fonts.gstatic.com'), 'Should not connect to Google Fonts static domain')
     assert.ok(!html.includes('<link rel="stylesheet"'), 'Should not link to external stylesheets')
   })
+
+  it('should use supplied picture as favicon and apple-touch-icon when present', () => {
+    const avatarUrl = 'https://example.com/custom-avatar.png'
+    const html = renderLandingPage({
+      username: 'alice',
+      domain: 'hodl.camp',
+      identifier: 'alice@hodl.camp',
+      lnurlBech32: 'lnurl1dp68gurn8ghj7mrw9e3k7mf0w5kkg6t0d5h85',
+      picture: avatarUrl
+    })
+
+    assert.ok(html.includes(`<link rel="icon" href="${avatarUrl}">`), 'Should contain supplied image as favicon')
+    assert.ok(html.includes(`<link rel="apple-touch-icon" href="${avatarUrl}">`), 'Should contain supplied image as apple-touch-icon')
+  })
+
+  it('should fallback to self-contained SVG favicon when no picture is supplied', () => {
+    const html = renderLandingPage({
+      username: 'alice',
+      domain: 'hodl.camp',
+      identifier: 'alice@hodl.camp',
+      lnurlBech32: 'lnurl1dp68gurn8ghj7mrw9e3k7mf0w5kkg6t0d5h85'
+    })
+
+    assert.ok(html.includes('<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,'), 'Should contain SVG data URI favicon')
+    assert.ok(html.includes('<link rel="alternate icon" href="/favicon.ico">'), 'Should contain alternate /favicon.ico link')
+  })
 })

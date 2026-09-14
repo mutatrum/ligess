@@ -31,7 +31,8 @@ const { getLnClient } = require('../backends/factory')
 const { getNostrZapperPubKey, verifyZapRequest, storePendingZapRequest, handleInvoiceUpdate } = require('../nostr/zaps')
 const { isWalletConnectEnabled, getWalletConnectHandler, getWalletConnectWsHandler, startOutboundRelayClient } = require('../nostr/nwcServer')
 const { parsePublicKey } = require('../nostr/crypto')
-const { renderLandingPage } = require('./landingPage')
+const { getProfileMetadata } = require('../nostr/metadata')
+const { renderLandingPage, DEFAULT_FAVICON_SVG } = require('./landingPage')
 const { REPO_URL } = require('../config/constants')
 
 function registerRoutes(fastify) {
@@ -100,6 +101,24 @@ function registerRoutes(fastify) {
         source: REPO_URL,
       },
     }
+  })
+
+  // Favicon endpoints
+  fastify.get('/favicon.ico', async (request, reply) => {
+    const meta = getProfileMetadata()
+    const picture = meta.picture || process.env.LIGESS_RELAY_ICON
+    if (picture && !picture.startsWith('data:')) {
+      return reply.redirect(302, picture)
+    }
+    reply.type('image/svg+xml')
+    reply.header('Cache-Control', 'public, max-age=86400')
+    return DEFAULT_FAVICON_SVG
+  })
+
+  fastify.get('/favicon.svg', async (request, reply) => {
+    reply.type('image/svg+xml')
+    reply.header('Cache-Control', 'public, max-age=86400')
+    return DEFAULT_FAVICON_SVG
   })
 
   // NIP-05 DNS verification endpoint: /.well-known/nostr.json?name=<username>

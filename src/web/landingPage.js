@@ -2,6 +2,9 @@ const { REPO_URL } = require("../config/constants")
 const { getProfileMetadata } = require("../nostr/metadata")
 const { generateQrSvg } = require("./qrSvg")
 
+const DEFAULT_FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fde047"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#d97706"/></linearGradient><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e1b2e"/><stop offset="100%" stop-color="#0f1016"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)" stroke="#f59e0b" stroke-opacity="0.35" stroke-width="1.2"/><path d="M18 3 L8.5 16.5 L14.5 16.5 L12.5 29 L23.5 14 L17.5 14 Z" fill="url(#b)"/></svg>`
+const DEFAULT_FAVICON_DATA_URI = "data:image/svg+xml," + encodeURIComponent(DEFAULT_FAVICON_SVG)
+
 function escapeHtml(str) {
   if (!str) return ""
   return String(str)
@@ -12,11 +15,11 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;")
 }
 
-function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL }) {
+function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL, picture: customPicture = null }) {
   const meta = getProfileMetadata()
   const displayName = escapeHtml(meta.display_name || meta.name || username)
   const about = escapeHtml(meta.about || "Send Bitcoin instantly via Lightning Address or Nostr Zaps.")
-  const picture = meta.picture ? escapeHtml(meta.picture) : null
+  const picture = customPicture ? escapeHtml(customPicture) : (meta.picture ? escapeHtml(meta.picture) : (process.env.LIGESS_RELAY_ICON ? escapeHtml(process.env.LIGESS_RELAY_ICON) : null))
   const safeIdentifier = escapeHtml(identifier)
   const safeBolt12 = bolt12Offer ? escapeHtml(bolt12Offer) : null
 
@@ -39,6 +42,10 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${displayName} | Lightning & Nostr Portal</title>
   <meta name="description" content="Pay ${displayName} instantly over the Lightning Network or Nostr Zaps.">
+  ${picture ? `  <link rel="icon" href="${picture}">
+  <link rel="apple-touch-icon" href="${picture}">
+  <link rel="alternate icon" type="image/svg+xml" href="${DEFAULT_FAVICON_DATA_URI}">` : `  <link rel="icon" type="image/svg+xml" href="${DEFAULT_FAVICON_DATA_URI}">
+  <link rel="alternate icon" href="/favicon.ico">`}
   <style>
     :root {
       --bg-gradient: radial-gradient(circle at 50% 0%, #1a162b 0%, #0d0e15 100%);
@@ -545,4 +552,4 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 </html>`
 }
 
-module.exports = { renderLandingPage }
+module.exports = { renderLandingPage, DEFAULT_FAVICON_SVG, DEFAULT_FAVICON_DATA_URI }
