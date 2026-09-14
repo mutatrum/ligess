@@ -1,6 +1,4 @@
-try {
-  globalThis.WebSocket = require('ws')
-} catch (_) {}
+require('./websocket')
 
 const fs = require('fs')
 const path = require('path')

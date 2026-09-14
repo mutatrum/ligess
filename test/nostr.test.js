@@ -98,4 +98,35 @@ test('Nostr Stack & Zap Validation', async (t) => {
 
     assert.equal(db.getPendingZap(testHash), null)
   })
+
+  await t.test('should handle invoice settlement and relay failure gracefully without unhandled error crash', async () => {
+    process.env.LIGESS_NOSTR_ZAPPER_PRIVATE_KEY = Buffer.from(sk).toString('hex')
+    const testHash = 'test_settle_hash_' + Date.now()
+    const zapReq = finalizeEvent({
+      kind: 9734,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['p', pk],
+        ['relays', 'wss://1.1.1.1:9999'],
+        ['amount', '1000']
+      ],
+      content: 'test zap'
+    }, sk)
+
+    db.storePendingZap(testHash, zapReq, '')
+
+    let warned = false
+    await handleInvoiceUpdate({
+      paymentHash: testHash,
+      settled: true,
+      amount: 1,
+      bolt11: 'lnbc...',
+      preImage: '00'.repeat(32)
+    }, {
+      info: () => {},
+      warn: () => { warned = true }
+    })
+
+    assert.equal(db.getPendingZap(testHash), null)
+  })
 })

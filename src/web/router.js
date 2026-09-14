@@ -29,7 +29,7 @@ const { bech32 } = require('bech32')
 const crypto = require('crypto')
 const { getLnClient } = require('../backends/factory')
 const { getNostrZapperPubKey, verifyZapRequest, storePendingZapRequest, handleInvoiceUpdate } = require('../nostr/zaps')
-const { isWalletConnectEnabled, getWalletConnectHandler, getWalletConnectWsHandler, startOutboundRelayClient } = require('../nostr/nwcServer')
+const { isWalletConnectEnabled, getWalletConnectHandler, getWalletConnectWsHandler, getRelayInformation, startOutboundRelayClient } = require('../nostr/nwcServer')
 const { parsePublicKey } = require('../nostr/crypto')
 const { getProfileMetadata } = require('../nostr/metadata')
 const { renderLandingPage, DEFAULT_FAVICON_SVG } = require('./landingPage')
@@ -72,35 +72,45 @@ function registerRoutes(fastify) {
     return record.count <= MAX_REQUESTS_PER_WINDOW
   }
 
-  // Home / Web Portal
-  fastify.get('/', async (request, reply) => {
-    const words = bech32.toWords(Buffer.from(_lnurlpUrl, 'utf8'))
-    const lnurlpBech32 = bech32.encode('lnurl', words, 1023)
+  // Home / Web Portal / Root Relay Endpoint
+  fastify.route({
+    method: 'GET',
+    url: '/',
+    handler: async (request, reply) => {
+      if (request.headers.accept && request.headers.accept.includes('application/nostr+json') && isWalletConnectEnabled()) {
+        reply.header('content-type', 'application/nostr+json')
+        return getRelayInformation()
+      }
 
-    const acceptsHtml = request.headers.accept && request.headers.accept.includes('text/html')
-    if (acceptsHtml || request.query.format === 'html') {
-      reply.type('text/html')
-      reply.header('X-Content-Type-Options', 'nosniff')
-      reply.header('X-Frame-Options', 'SAMEORIGIN')
-      reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; connect-src 'self';")
-      return renderLandingPage({
-        username: _username,
-        domain: _domain,
-        identifier: _identifier,
-        lnurlBech32: lnurlpBech32,
-        bolt12Offer: process.env.LIGESS_BOLT12_OFFER || null,
-        repoUrl: REPO_URL
-      })
-    }
+      const words = bech32.toWords(Buffer.from(_lnurlpUrl, 'utf8'))
+      const lnurlpBech32 = bech32.encode('lnurl', words, 1023)
 
-    return {
-      lnurlp: lnurlpBech32,
-      decodedUrl: _lnurlpUrl,
-      info: {
-        title: 'Ligess: Lightning address personal server',
-        source: REPO_URL,
-      },
-    }
+      const acceptsHtml = request.headers.accept && request.headers.accept.includes('text/html')
+      if (acceptsHtml || request.query.format === 'html') {
+        reply.type('text/html')
+        reply.header('X-Content-Type-Options', 'nosniff')
+        reply.header('X-Frame-Options', 'SAMEORIGIN')
+        reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; connect-src 'self';")
+        return renderLandingPage({
+          username: _username,
+          domain: _domain,
+          identifier: _identifier,
+          lnurlBech32: lnurlpBech32,
+          bolt12Offer: process.env.LIGESS_BOLT12_OFFER || null,
+          repoUrl: REPO_URL
+        })
+      }
+
+      return {
+        lnurlp: lnurlpBech32,
+        decodedUrl: _lnurlpUrl,
+        info: {
+          title: 'Ligess: Lightning address personal server',
+          source: REPO_URL,
+        },
+      }
+    },
+    ...(isWalletConnectEnabled() ? { wsHandler: getWalletConnectWsHandler() } : {})
   })
 
   // Favicon endpoints
@@ -143,6 +153,12 @@ function registerRoutes(fastify) {
       fastify.route({
         method: 'GET',
         url: '/relay/',
+        handler: getWalletConnectHandler(),
+        wsHandler: getWalletConnectWsHandler()
+      })
+      fastify.route({
+        method: 'GET',
+        url: '/relay',
         handler: getWalletConnectHandler(),
         wsHandler: getWalletConnectWsHandler()
       })

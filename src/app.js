@@ -1,3 +1,4 @@
+require('./nostr/websocket')
 const Fastify = require('fastify')
 const websocketPlugin = require('@fastify/websocket')
 const { registerRoutes } = require('./web/router')

@@ -1,6 +1,4 @@
-try {
-  globalThis.WebSocket = require('ws')
-} catch (_) {}
+require('./websocket')
 
 const { finalizeEvent, verifyEvent, getPublicKey, nip19, SimplePool } = require('nostr-tools')
 const { getLnClient } = require('../backends/factory')
@@ -355,7 +353,19 @@ async function executeMethod(method, params, logger = console) {
         bolt11: decoded.paymentRequest,
         amountMsats: params.amount
       })
-      db.recordNwcSpend(satoshis, decoded.tagsObject.payment_hash || '')
+      const paymentHash = decoded.tagsObject.payment_hash || ''
+      db.recordNwcSpend(satoshis, paymentHash)
+
+      if (logger.info) {
+        logger.info({
+          msg: 'NWC invoice paid',
+          amount: satoshis,
+          paymentHash,
+          preimage: paid.paymentPreimage,
+          description: decoded.tagsObject.description || ''
+        })
+      }
+
       return {
         preimage: paid.paymentPreimage
       }
@@ -388,6 +398,16 @@ async function executeMethod(method, params, logger = console) {
       if (amountSats > 0) {
         db.recordNwcSpend(amountSats, offer)
       }
+
+      if (logger.info) {
+        logger.info({
+          msg: 'NWC offer paid',
+          amount: amountSats,
+          offer,
+          preimage: paid.paymentPreimage
+        })
+      }
+
       return {
         preimage: paid.paymentPreimage
       }

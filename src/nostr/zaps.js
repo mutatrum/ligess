@@ -1,6 +1,4 @@
-try {
-  globalThis.WebSocket = require('ws')
-} catch (_) {}
+require('./websocket')
 
 const fs = require('fs')
 const { SimplePool, finalizeEvent, verifyEvent, getPublicKey, nip19 } = require('nostr-tools')
@@ -146,12 +144,19 @@ const handleInvoiceUpdate = async (invoice, logger = console) => {
     ? Math.floor(new Date(invoice.settleDate).getTime() / 1000)
     : Math.floor(Date.now() / 1000)
 
+  const zapperPrivKey = _nostrZapperPrivKey || parsePrivateKey(process.env.LIGESS_NOSTR_ZAPPER_PRIVATE_KEY)
+  if (!zapperPrivKey) {
+    if (logger.warn) logger.warn({ msg: 'Cannot sign zap receipt: no zapper private key configured' })
+    db.removePendingZap(invoice.paymentHash)
+    return
+  }
+
   const zapNote = finalizeEvent({
     kind: 9735,
     created_at: settleTimestamp,
     tags,
     content
-  }, _nostrZapperPrivKey)
+  }, zapperPrivKey)
 
   if (logger.info) {
     logger.info({

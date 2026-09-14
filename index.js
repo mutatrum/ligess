@@ -1,6 +1,4 @@
-try {
-  globalThis.WebSocket = require('ws')
-} catch (_) {}
+require('./src/nostr/websocket')
 
 const { startup } = require('./src/config/startup')
 const { start } = require('./src/app')
