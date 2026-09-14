@@ -118,6 +118,7 @@ describe('Landing Page Renderer', () => {
 
     assert.ok(html.includes(`<link rel="icon" href="${avatarUrl}">`), 'Should contain supplied image as favicon')
     assert.ok(html.includes(`<link rel="apple-touch-icon" href="${avatarUrl}">`), 'Should contain supplied image as apple-touch-icon')
+    assert.ok(!html.includes('data:image/svg+xml,'), 'Should not contain SVG data URI when picture is supplied')
   })
 
   it('should fallback to self-contained SVG favicon when no picture is supplied', () => {

@@ -43,8 +43,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   <title>${displayName} | Lightning & Nostr Portal</title>
   <meta name="description" content="Pay ${displayName} instantly over the Lightning Network or Nostr Zaps.">
   ${picture ? `  <link rel="icon" href="${picture}">
-  <link rel="apple-touch-icon" href="${picture}">
-  <link rel="alternate icon" type="image/svg+xml" href="${DEFAULT_FAVICON_DATA_URI}">` : `  <link rel="icon" type="image/svg+xml" href="${DEFAULT_FAVICON_DATA_URI}">
+  <link rel="apple-touch-icon" href="${picture}">` : `  <link rel="icon" type="image/svg+xml" href="${DEFAULT_FAVICON_DATA_URI}">
   <link rel="alternate icon" href="/favicon.ico">`}
   <style>
     :root {
