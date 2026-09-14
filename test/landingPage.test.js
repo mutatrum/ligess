@@ -1,6 +1,7 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert')
 const { renderLandingPage } = require('../src/web/landingPage')
+const { generateQrSvg, isAlphaNum } = require('../src/web/qrSvg')
 
 describe('Landing Page Renderer', () => {
   it('should render HTML with escaped values and WebLN button', () => {
@@ -73,6 +74,23 @@ describe('Landing Page Renderer', () => {
 
     assert.ok(!html.includes('<script>alert("xss")</script>'), 'Raw script tags must not be rendered')
     assert.ok(html.includes('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'), 'XSS payload must be escaped')
+  })
+
+
+  it("should detect alphanumeric strings for QR optimization", () => {
+    assert.strictEqual(isAlphaNum("LIGHTNING:LNO1QGSQ"), true)
+    assert.strictEqual(isAlphaNum("LNURL1DP68GURN8"), true)
+    assert.strictEqual(isAlphaNum("user@domain.com"), false) // @ is not in QR alphanumeric table
+  })
+
+  it("should leverage Alphanumeric mode to generate a denser and smaller grid for BOLT12", () => {
+    const sampleOffer = "lno1qgsqvgnwgcg5uvgfutpq8pkp2dsh4gay450fv616qd2n5x2mm5ch7vs7v584mn50vdzk7urjv4h8g6tr8qzsqwuev4682un9yp68sgrfwd682un9yp68sgrfwd682un9yp68sgrfwd682un9yp68sgrfwd682un9yp68sgrfwd682un9yp68sgrfwd682un9yp68sgrfwd682un9yp682"
+    const svg = generateQrSvg("lightning:" + sampleOffer)
+    const match = svg.match(/viewBox="0 0 (\d+) (\d+)"/)
+    assert.ok(match, "Should have valid viewBox")
+    const size = parseInt(match[1], 10)
+    // In Alphanumeric mode with margin 2, size is (49 modules + 4 margin) = 53 instead of 61+
+    assert.ok(size <= 55, "Grid size should be streamlined")
   })
 
   it('should not contain any external fonts or stylesheet links', () => {

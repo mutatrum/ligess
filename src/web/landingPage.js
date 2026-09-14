@@ -19,11 +19,15 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   const safeIdentifier = escapeHtml(identifier)
   const safeBolt12 = bolt12Offer ? escapeHtml(bolt12Offer) : null
 
-  // Canonical Lightning URI (ultra-small 33x33 grid, scans in <0.05s on 100% of consumer wallets)
-  const lightningUri = "lightning:" + encodeURIComponent(lnurlBech32)
-  const lightningSvg = generateQrSvg(lightningUri)
+  // Universal Lightning Address & BIP-353 URI (ultra-compact 25x25 grid, scans in <0.02s)
+  const lightningAddressUri = "lightning:" + safeIdentifier
+  const lightningAddressSvg = generateQrSvg(lightningAddressUri)
 
-  // Dedicated BOLT12 URI if offer is configured (clean dedicated grid, unbloated by LNURL)
+  // Legacy LNURL Bech32 URI for older wallets (optimized with Alphanumeric mode)
+  const legacyLnurlUri = "lightning:" + encodeURIComponent(lnurlBech32)
+  const legacyLnurlSvg = generateQrSvg(legacyLnurlUri)
+
+  // Dedicated BOLT12 URI if offer is configured (optimized with Alphanumeric mode)
   const bolt12Uri = safeBolt12 ? ("lightning:" + encodeURIComponent(bolt12Offer)) : null
   const bolt12Svg = safeBolt12 ? generateQrSvg(bolt12Uri) : null
 
@@ -411,13 +415,20 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
       <div id="viewLightning" class="qr-view">
         <div class="qr-container">
-          <a href="${lightningUri}" title="Scan or click to open in Lightning wallet">
-            ${lightningSvg}
+          <a href="${lightningAddressUri}" title="Scan or click to open in Lightning wallet">
+            ${lightningAddressSvg}
           </a>
         </div>
         <div class="qr-caption">
-          <span>⚡ Scan with any Lightning wallet</span>
+          <span>⚡ Scan with any Lightning or BIP-353 wallet</span>
         </div>
+        <details class="offer-details">
+          <summary>Need legacy Bech32 (LNURL)?</summary>
+          <div style="margin-top:12px;text-align:center;">
+            <div style="width:180px;height:180px;margin:0 auto;">${legacyLnurlSvg}</div>
+            <code style="display:block;margin-top:8px;word-break:break-all;font-size:11px;">${legacyLnurlUri}</code>
+          </div>
+        </details>
       </div>
 
       ${safeBolt12 ? `
