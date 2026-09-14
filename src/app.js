@@ -3,12 +3,25 @@ const Fastify = require('fastify')
 const websocketPlugin = require('@fastify/websocket')
 const { registerRoutes } = require('./web/router')
 const { startNutzapService, isNutzapEnabled } = require('./nostr/nutzaps')
+const { createConsoleLogger, logHttpResponse } = require('./config/logger')
 
 function buildApp(options = {}) {
+  const enableLogging = options.logger !== false
+  const logger = enableLogging
+    ? (options.logger && typeof options.logger === 'object' ? options.logger : createConsoleLogger())
+    : false
+
   const fastify = Fastify({
-    logger: true,
-    ...options
+    disableRequestLogging: true,
+    ...options,
+    logger
   })
+
+  if (enableLogging) {
+    fastify.addHook('onResponse', async (request, reply) => {
+      logHttpResponse(request, reply)
+    })
+  }
 
   fastify.register(websocketPlugin)
   registerRoutes(fastify)
