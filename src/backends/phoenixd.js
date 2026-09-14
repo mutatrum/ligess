@@ -224,6 +224,7 @@ class PhoenixdBackend extends Backend {
         }
       })
 
+      this.streamReq = req
       req.end()
     }
 
@@ -235,6 +236,10 @@ class PhoenixdBackend extends Backend {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
+    }
+    if (this.streamReq) {
+      this.streamReq.destroy()
+      this.streamReq = null
     }
   }
 }

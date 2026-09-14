@@ -68,6 +68,10 @@ class Backend extends EventEmitter {
 
   stopWatchingInvoices() {
     this.isWatching = false
+    if (this.watchInterval) {
+      clearInterval(this.watchInterval)
+      this.watchInterval = null
+    }
   }
 }
 
