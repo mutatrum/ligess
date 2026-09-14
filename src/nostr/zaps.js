@@ -5,6 +5,7 @@ try {
 const fs = require('fs')
 const { SimplePool, finalizeEvent, verifyEvent, getPublicKey, nip19 } = require('nostr-tools')
 const db = require('../storage/db')
+const { getMetadataNote: buildMetadataNote } = require('./metadata')
 const { parsePrivateKey, getTags } = require('./crypto')
 
 const _nostrZapperPrivKey = parsePrivateKey(process.env.LIGESS_NOSTR_ZAPPER_PRIVATE_KEY)
@@ -13,28 +14,18 @@ const _nostrZapperPubKey = _nostrZapperPrivKey ? getPublicKey(_nostrZapperPrivKe
 const pool = new SimplePool()
 const sentMetadata = []
 
-const getMetadataNote = (file) => {
-  if (file && _nostrZapperPrivKey) {
-    if (!fs.existsSync(file)) {
-      throw new Error(`Metadata file ${file} not found`)
-    }
-    const metadata = fs.readFileSync(file, 'utf8')
-    try {
-      const content = JSON.parse(metadata)
-      return finalizeEvent({
-        kind: 0,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [],
-        content: JSON.stringify(content)
-      }, _nostrZapperPrivKey)
-    } catch (error) {
-      throw new Error(`Invalid JSON in metadata file ${file}`)
-    }
-  }
-  return null
+const getMetadataNote = () => {
+  if (!_nostrZapperPrivKey) return null
+  const note = buildMetadataNote()
+  return finalizeEvent({
+    kind: 0,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: note.content
+  }, _nostrZapperPrivKey)
 }
 
-const _nostrMetadataNote = getMetadataNote(process.env.LIGESS_NOSTR_METADATA_FILE)
+const _nostrMetadataNote = getMetadataNote()
 
 const getNostrZapperPubKey = () => _nostrZapperPubKey
 

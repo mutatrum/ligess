@@ -10,6 +10,14 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 
 ## What's New in Ligess Modernized
 
+- 🥜 **NIP-61 Nutzaps (Cashu P2PK with Auto-Melt)**:
+  - Supports receiving Cashu ecash Nutzaps directly on Nostr via P2PK locking (NUT-10 / NUT-11).
+  - Publishes kind 10019 Nutzap Info Announcement and subscribes to kind 9321 Nutzap events.
+  - **Auto-Melt into Lightning**: Automatically creates an invoice on your active Lightning backend (LND, CLN, Phoenixd, etc.) and melts ecash proofs at the mint, settling funds directly into your node satoshis.
+  - Powered by `@cashu/cashu-ts` v4 with zero native C++ binaries.
+- ⚙️ **Dynamic Relay & Profile Configuration (Sunsetting JSON files)**:
+  - Dynamically calculates `supported_nips` ([1, 4, 5, 11, 42, 44, 47, 57, 61]), software repo, and version.
+  - Profile metadata (Kind 0 & landing page) and relay information are derived dynamically from `.env` (`LIGESS_NOSTR_*` and `LIGESS_RELAY_*`), eliminating static JSON files (`relayInformation.json` and `metadata.json`) with deprecation warnings for legacy files.
 - ⚡ **9 Native Lightning & Ecash Backends (Sunsetting `una-wrapper`)**:
   - Direct REST, GraphQL, and Nostr drivers for **LND**, **Core Lightning (CLN)**, **LNbits**, **Eclair**, **Phoenixd**, **Upstream NWC** (Alby Hub, Umbrel, Zeus), **LDK Node / Server**, **Blink (Galoy)**, and **Cashu Mint**.
   - **Real-Time Invoice Streaming**: Native SSE push notifications for LND (`/v1/invoices/subscribe`) and Phoenixd (`/payments/incoming`), eliminating polling delays for instant zap receipts.
@@ -191,12 +199,46 @@ LIGESS_NOSTR_PUBKEY=npub1...
 ```
 Now clients verifying `username@yourdomain.com` will validate your profile.
 
-### Nostr Profile Metadata (Kind 0)
-Create a `metadata.json` (see `metadata.json.example`) and reference it:
+### Nostr Profile Metadata (Kind 0) & Web Landing Page
+Profile information is dynamically derived from your configured `LIGESS_USERNAME` and `LIGESS_DOMAIN`. You can customize any field directly in `.env`:
 ```env
-LIGESS_NOSTR_METADATA_FILE=metadata.json
+LIGESS_NOSTR_DISPLAY_NAME="Alice"
+LIGESS_NOSTR_ABOUT="Send Bitcoin instantly via Lightning Address or Nostr Zaps."
+LIGESS_NOSTR_PICTURE="https://yourdomain.com/avatar.png"
+LIGESS_NOSTR_BANNER="https://yourdomain.com/banner.png"
+LIGESS_NOSTR_WEBSITE="https://yourdomain.com"
 ```
-Ligess will broadcast your profile metadata to zapping relays.
+*(Note: Legacy `metadata.json` and `LIGESS_NOSTR_METADATA_FILE` are deprecated; a warning will be logged on startup if detected.)*
+
+---
+
+## NIP-61 Nutzaps (Cashu Ecash Zaps)
+
+Ligess supports [NIP-61 (Nutzaps)](https://github.com/nostr-protocol/nips/blob/master/61.md), allowing you to receive Cashu ecash zaps on Nostr locked to your public key via P2PK (NUT-10/NUT-11).
+
+### Enabling Nutzaps
+Enable Nutzaps in your `.env`:
+```env
+LIGESS_NUTZAP_ENABLED=true
+# Optional: defaults to LIGESS_NOSTR_ZAPPER_PRIVATE_KEY
+# LIGESS_NUTZAP_PRIVATE_KEY=nsec1...
+
+# Trusted Cashu mints (comma-separated):
+LIGESS_NUTZAP_MINTS=https://mint.minibits.cash/Bitcoin,https://mint.coinos.io
+
+# Relays to announce kind 10019 and monitor for kind 9321 Nutzaps:
+LIGESS_NUTZAP_RELAYS=wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net
+
+# Auto-Melt into Lightning (Default: true):
+LIGESS_NUTZAP_AUTO_MELT=true
+```
+
+### How Auto-Melt Works
+When someone sends a kind 9321 Nutzap to your Nostr pubkey:
+1. Ligess unlocks the Cashu proofs using your derived P2PK private key witness (NUT-11).
+2. Ligess calls your active Lightning backend (LND, CLN, Phoenixd, etc.) to generate an invoice for the exact amount.
+3. Ligess requests a melt quote from the Cashu mint and executes `wallet.meltProofs(quote, proofs)`.
+4. The funds immediately settle into your sovereign Lightning node balance!
 
 ---
 
@@ -267,7 +309,7 @@ node bin/bip353.js --user alice --domain mydomain.com --offer lno1...
 ## Web Landing Page & WebLN
 
 Visit `https://YOURDOMAIN.COM/` in any browser to see the interactive portal:
-- Display name, avatar, and bio loaded from `metadata.json`.
+- Display name, avatar, and bio generated dynamically or customized via `.env` (`LIGESS_NOSTR_*`).
 - Click-to-copy Lightning Address (`user@domain.com`).
 - WebLN button to pay presets (21, 100, 1000, 5000 sats) with one click via Alby or Zeus.
 - Toggle between Lightning Address QR and BOLT12 Offer QR.

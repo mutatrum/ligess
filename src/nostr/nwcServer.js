@@ -32,21 +32,75 @@ function getSupportedMethods() {
   return methods
 }
 
-const getNostrRelayInformation = (file) => {
-  if (file && fs.existsSync(file)) {
-    return JSON.parse(fs.readFileSync(file, 'utf8'))
+let _warnedRelayDeprecation = false
+
+function getRelayInformation(env = process.env) {
+  const username = env.LIGESS_USERNAME || "ligess"
+  const domain = env.LIGESS_DOMAIN || "localhost"
+
+  const nips = [1, 4, 5, 11, 44]
+  if (env.LIGESS_NOSTR_WALLET_CONNECT_PUBLIC_KEY) nips.push(42)
+  if (env.LIGESS_NOSTR_WALLET_CONNECT_PRIVATE_KEY) nips.push(47)
+  if (env.LIGESS_NOSTR_ZAPPER_PRIVATE_KEY) nips.push(57)
+  if (env.LIGESS_NUTZAP_ENABLED === "true" || env.LIGESS_NUTZAP_MINTS) nips.push(61)
+  nips.sort((a, b) => a - b)
+
+  const pubkey = env.LIGESS_NOSTR_PUBKEY
+    ? parsePublicKey(env.LIGESS_NOSTR_PUBKEY)
+    : (_nostrWalletConnectEncryptPubKey || "")
+
+  let pkgVersion = "2.0.0"
+  try {
+    pkgVersion = require("../../package.json").version
+  } catch (_) {}
+
+  const defaults = {
+    name: env.LIGESS_RELAY_NAME || `${username}'s Ligess Server`,
+    description: env.LIGESS_RELAY_DESCRIPTION || `Lightning Address & Nostr Relay for ${username}@${domain}`,
+    pubkey,
+    contact: env.LIGESS_RELAY_CONTACT || `${username}@${domain}`,
+    supported_nips: nips,
+    software: "https://git.mutatrum.com/mutatrum/ligess",
+    version: pkgVersion,
+    limitation: {
+      auth_required: Boolean(env.LIGESS_NOSTR_WALLET_CONNECT_PUBLIC_KEY)
+    }
   }
-  return null
+
+  if (env.LIGESS_RELAY_ICON) {
+    defaults.icon = env.LIGESS_RELAY_ICON
+  }
+
+  const legacyFile = env.LIGESS_NOSTR_RELAY_INFORMATION
+  if (legacyFile && fs.existsSync(legacyFile)) {
+    if (!_warnedRelayDeprecation) {
+      console.warn(
+        `\x1b[33m[DEPRECATION WARNING]\x1b[0m LIGESS_NOSTR_RELAY_INFORMATION is deprecated. ` +
+        `Relay info is now dynamically generated. Use LIGESS_RELAY_NAME, LIGESS_RELAY_DESCRIPTION, ` +
+        `LIGESS_RELAY_CONTACT in .env instead.`
+      )
+      _warnedRelayDeprecation = true
+    }
+    try {
+      const fileData = JSON.parse(fs.readFileSync(legacyFile, "utf8"))
+      return {
+        ...defaults,
+        ...fileData,
+        supported_nips: nips,
+        version: pkgVersion,
+        software: fileData.software || defaults.software
+      }
+    } catch (err) {
+      console.error(`Failed to parse legacy relay information file ${legacyFile}:`, err.message)
+    }
+  }
+
+  return defaults
 }
 
-const _nostrRelayInformation = getNostrRelayInformation(process.env.LIGESS_NOSTR_RELAY_INFORMATION)
-
 const getWalletConnectHandler = () => (request, reply) => {
-  if (_nostrRelayInformation) {
-    reply.send(_nostrRelayInformation)
-  } else {
-    reply.code(404).send()
-  }
+  reply.header("content-type", "application/nostr+json")
+  reply.send(getRelayInformation())
 }
 
 const getWalletConnectWsHandler = () => {
@@ -464,6 +518,7 @@ module.exports = {
   isWalletConnectEnabled,
   getWalletConnectHandler,
   getWalletConnectWsHandler,
+  getRelayInformation,
   startOutboundRelayClient,
   processZapRequest,
   executeMethod,

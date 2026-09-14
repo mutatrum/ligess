@@ -1,6 +1,7 @@
 const Fastify = require('fastify')
 const websocketPlugin = require('@fastify/websocket')
 const { registerRoutes } = require('./web/router')
+const { startNutzapService, isNutzapEnabled } = require('./nostr/nutzaps')
 
 function buildApp(options = {}) {
   const fastify = Fastify({
@@ -14,6 +15,8 @@ function buildApp(options = {}) {
   return fastify
 }
 
+let _nutzapService = null
+
 const start = async (options = {}) => {
   const app = buildApp(options)
   const port = Number(process.env.PORT) || 8080
@@ -21,6 +24,18 @@ const start = async (options = {}) => {
 
   try {
     await app.listen({ port, host })
+
+    if (isNutzapEnabled()) {
+      _nutzapService = startNutzapService()
+    }
+
+    app.addHook('onClose', async () => {
+      if (_nutzapService && typeof _nutzapService.close === 'function') {
+        _nutzapService.close()
+        _nutzapService = null
+      }
+    })
+
     return app
   } catch (err) {
     app.log.error(err)

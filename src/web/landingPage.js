@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const { getProfileMetadata } = require('../nostr/metadata')
 
 function escapeHtml(str) {
   if (!str) return ''
@@ -24,7 +25,7 @@ function getMetadata() {
 }
 
 function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null }) {
-  const meta = getMetadata()
+  const meta = getProfileMetadata()
   const displayName = escapeHtml(meta.display_name || meta.name || username)
   const about = escapeHtml(meta.about || `Send Bitcoin instantly via Lightning Address or Nostr Zaps.`)
   const picture = meta.picture ? escapeHtml(meta.picture) : null

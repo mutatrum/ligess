@@ -2,6 +2,16 @@
 # yarn lockfile v1
 
 
+"@cashu/cashu-ts@^4.10.1":
+  version "4.10.1"
+  resolved "https://registry.npmjs.org/@cashu/cashu-ts/-/cashu-ts-4.10.1.tgz"
+  integrity sha512-dBCWk0dwaYzeGbwcRW0aGwHI8qD8bkXKaCivgJTC9nO4o/PAfYeQYL8LNgi2DU+YUdJh54keJxKNa5aB+hhjxA==
+  dependencies:
+    "@noble/curves" "^2.4.0"
+    "@noble/hashes" "^2.4.0"
+    "@scure/base" "^2.4.0"
+    "@scure/bip32" "^2.4.0"
+
 "@fastify/ajv-compiler@^3.5.0":
   version "3.5.0"
   resolved "https://registry.npmjs.org/@fastify/ajv-compiler/-/ajv-compiler-3.5.0.tgz"
@@ -41,6 +51,13 @@
   resolved "https://registry.npmjs.org/@noble/ciphers/-/ciphers-2.1.1.tgz"
   integrity sha512-bysYuiVfhxNJuldNXlFEitTVdNnYUc+XNJZd7Qm2a5j1vZHgY+fazadNFWFaMK/2vye0JVlxV3gHmC0WDfAOQw==
 
+"@noble/curves@^2.4.0", "@noble/curves@2.4.0":
+  version "2.4.0"
+  resolved "https://registry.npmjs.org/@noble/curves/-/curves-2.4.0.tgz"
+  integrity sha512-P4/62zrgfH33CneE3Dn4WhJVA22YUU0eR51wKIan4NVRvwsA0YnPTwWGpNbpuacSujmSFLvyzpyuR30+fbq2Ew==
+  dependencies:
+    "@noble/hashes" "2.4.0"
+
 "@noble/curves@2.0.1":
   version "2.0.1"
   resolved "https://registry.npmjs.org/@noble/curves/-/curves-2.0.1.tgz"
@@ -48,15 +65,34 @@
   dependencies:
     "@noble/hashes" "2.0.1"
 
+"@noble/hashes@^2.4.0", "@noble/hashes@2.4.0":
+  version "2.4.0"
+  resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-2.4.0.tgz"
+  integrity sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==
+
 "@noble/hashes@2.0.1":
   version "2.0.1"
   resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-2.0.1.tgz"
   integrity sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==
 
+"@scure/base@^2.4.0", "@scure/base@2.4.0":
+  version "2.4.0"
+  resolved "https://registry.npmjs.org/@scure/base/-/base-2.4.0.tgz"
+  integrity sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==
+
 "@scure/base@2.0.0":
   version "2.0.0"
   resolved "https://registry.npmjs.org/@scure/base/-/base-2.0.0.tgz"
   integrity sha512-3E1kpuZginKkek01ovG8krQ0Z44E3DHPjc5S2rjJw9lZn3KSQOs8S7wqikF/AH7iRanHypj85uGyxk0XAyC37w==
+
+"@scure/bip32@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.npmjs.org/@scure/bip32/-/bip32-2.4.0.tgz"
+  integrity sha512-i3DS0CptAocyvqE4n3SUkpzeQK4vJMFwWLofTwRiiKo2aWojBOfyMCgfKw9HVpO6fSY5AK86sHS/Uzn8kK9Few==
+  dependencies:
+    "@noble/curves" "2.4.0"
+    "@noble/hashes" "2.4.0"
+    "@scure/base" "2.4.0"
 
 "@scure/bip32@2.0.1":
   version "2.0.1"
@@ -969,10 +1005,10 @@ wif@^2.0.1:
   dependencies:
     bs58check "<3.0.0"
 
-ws@^8.0.0:
-  version "8.13.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.13.0.tgz"
-  integrity sha512-x9vcZYTrFPC7aSIbj7sRCYo7L/Xb8Iy+pW0ng0wt2vCJv7M9HOMy0UoN3rr+IFC7hb7vXoqS+P9ktyLLLhO+LA==
+ws@^8.0.0, ws@^8.18.0:
+  version "8.21.3"
+  resolved "https://registry.npmjs.org/ws/-/ws-8.21.3.tgz"
+  integrity sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==
 
 yallist@^4.0.0:
   version "4.0.0"
