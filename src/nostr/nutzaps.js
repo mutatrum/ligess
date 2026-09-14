@@ -1,3 +1,7 @@
+try {
+  globalThis.WebSocket = require('ws')
+} catch (_) {}
+
 const fs = require('fs')
 const path = require('path')
 const { Mint, Wallet, getPubKeyFromPrivKey } = require('@cashu/cashu-ts')
@@ -260,7 +264,7 @@ function startNutzapService(env = process.env, getBackend = getLnClient) {
   }
 
   console.log(`\x1b[35m🥜 [NUTZAP]\x1b[0m Listening for incoming Nutzaps on ${relays.length} relays...`)
-  const sub = pool.subscribeMany(relays, [filter], {
+  const sub = pool.subscribeMany(relays, filter, {
     onevent: async (event) => {
       try {
         await processNutzapEvent(event, { autoMelt, getBackend, env })

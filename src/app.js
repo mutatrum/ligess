@@ -23,18 +23,18 @@ const start = async (options = {}) => {
   const host = process.env.HOST || '127.0.0.1'
 
   try {
-    await app.listen({ port, host })
-
-    if (isNutzapEnabled()) {
-      _nutzapService = startNutzapService()
-    }
-
     app.addHook('onClose', async () => {
       if (_nutzapService && typeof _nutzapService.close === 'function') {
         _nutzapService.close()
         _nutzapService = null
       }
     })
+
+    await app.listen({ port, host })
+
+    if (isNutzapEnabled()) {
+      _nutzapService = startNutzapService()
+    }
 
     return app
   } catch (err) {
