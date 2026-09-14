@@ -221,10 +221,6 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       overflow: hidden;
     }
 
-    .qr-container:hover {
-      transform: scale(1.02);
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.2);
-    }
 
     .qr-container a {
       display: block;
