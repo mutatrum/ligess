@@ -381,47 +381,17 @@ class LndBackend extends Backend {
   }
 }
 
-function parseProtobufFields(buffer) {
-  let offset = 0
-  const fields = []
-  while (offset < buffer.length) {
-    const key = buffer[offset++]
-    const fieldNum = key >> 3
-    const wireType = key & 7
-    if (wireType === 0) {
-      let val = 0, shift = 0
-      while (true) {
-        if (offset >= buffer.length) break
-        const b = buffer[offset++]
-        val |= (b & 0x7f) << shift
-        if ((b & 0x80) === 0) break
-        shift += 7
-      }
-      fields.push({ fieldNum, wireType, val })
-    } else if (wireType === 2) {
-      let len = 0, shift = 0
-      while (true) {
-        if (offset >= buffer.length) break
-        const b = buffer[offset++]
-        len |= (b & 0x7f) << shift
-        if ((b & 0x80) === 0) break
-        shift += 7
-      }
-      if (offset + len > buffer.length) break
-      const data = buffer.slice(offset, offset + len)
-      offset += len
-      fields.push({ fieldNum, wireType, data })
-    } else {
-      break
-    }
-  }
-  return fields
-}
+const { parseProtobufFields } = require('./protobuf')
 
+/**
+ * Inspect an LND hex-encoded macaroon to extract its SHA-256 fingerprint,
+ * internal permissions, and operational mode without exposing secret keys.
+ * @param {string} macaroonHex
+ * @returns {{ fingerprint: string, permissions: string[], hasOffchainWrite: boolean, isAdmin: boolean, mode: string, byteLength: number } | null}
+ */
 function inspectMacaroon(macaroonHex) {
   if (!macaroonHex || typeof macaroonHex !== 'string') return null
   try {
-    const crypto = require('crypto')
     const buf = Buffer.from(macaroonHex.trim(), 'hex')
     if (buf.length < 10) return null
 
@@ -443,7 +413,7 @@ function inspectMacaroon(macaroonHex) {
           shift += 7
         }
         if (offset + len > buf.length) break
-        const data = buf.slice(offset, offset + len)
+        const data = buf.subarray(offset, offset + len)
         offset += len
         if (type === 2) identifier = data
       }
@@ -451,7 +421,8 @@ function inspectMacaroon(macaroonHex) {
 
     const permissions = []
     if (identifier && identifier.length > 1) {
-      const protoBuf = identifier.slice(1)
+      // Skip 1-byte id version (e.g. 0x03)
+      const protoBuf = identifier.subarray(1)
       const idFields = parseProtobufFields(protoBuf)
       const ops = idFields.filter(f => f.fieldNum === 3)
       for (const op of ops) {
