@@ -21,6 +21,11 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 - ⚡ **9 Native Lightning & Ecash Backends (Sunsetting `una-wrapper`)**:
   - Direct REST, GraphQL, and Nostr drivers for **LND**, **Core Lightning (CLN)**, **LNbits**, **Eclair**, **Phoenixd**, **Upstream NWC** (Alby Hub, Umbrel, Zeus), **LDK Node / Server**, **Blink (Galoy)**, and **Cashu Mint**.
   - **Real-Time Invoice Streaming**: Native SSE push notifications for LND (`/v1/invoices/subscribe`) and Phoenixd (`/payments/incoming`), eliminating polling delays for instant zap receipts.
+- 🛡️ **Zero-Dependency Protobuf & Credential Security Inspection**:
+  - Automatically inspects and validates credentials across all 9 backends at boot without leaking sensitive keys.
+  - Decodes LND macaroon permissions via a lightweight, zero-dependency wire decoder (`src/backends/protobuf.js`).
+  - Verifies Core Lightning (CLN) rune restrictions and reports whether full spending or receive-only mode is active.
+  - Logs SHA-256 fingerprints for credential auditing and warns if unrestricted administrative privileges are detected on public-facing servers.
 - 🏗️ **Clean Modular `src/` Architecture**:
   - Codebase structured into specialized domain modules: `src/config/`, `src/backends/`, `src/clients/`, `src/nostr/`, `src/storage/`, `src/web/`, and `bin/`.
   
@@ -240,6 +245,21 @@ LIGESS_CLN_RUNE=your_rune_string
 LIGESS_CLN_MACAROON=hex_macaroon_string
 ```
 
+#### Restricting Core Lightning Runes with Least Privilege
+
+Like LND macaroons, CLN runes can be restricted to minimize risk based on your operational profile:
+
+* **Receive-Only Mode** (Lightning Address, Zaps & Nutzap Melt):
+  ```bash
+  # Generate rune restricted strictly to creating and monitoring invoices
+  lightning-cli commando-rune '["method=invoice", "method=waitanyinvoice"]'
+  ```
+* **Full Mode** (Nostr Wallet Connect Outbound Spending):
+  ```bash
+  # Allow invoice creation, payments, keysends, and node info inquiries
+  lightning-cli commando-rune '["method=invoice", "method=waitanyinvoice", "method=pay", "method=keysend", "method=listinvoices", "method=getinfo"]'
+  ```
+
 ### LNbits Configuration
 ```env
 LIGESS_LN_BACKEND=LNbits
@@ -412,28 +432,41 @@ LIGESS_NOSTR_WALLET_CONNECT_BUDGET_DAY=100000   # Max per day (sats)
 
 ---
 
-## BOLT12 & LNDK Integration
+## BOLT12 & Bitcoin Payment Instructions (BIP-353 / BIP-352)
 
-Ligess can leverage [LNDK](https://github.com/lndk-org/lndk) to unlock BOLT12 support for LND nodes.
+Ligess provides end-to-end support for BOLT12 offers and Bitcoin payment instructions via DNS TXT records.
 
-### Outbound BOLT12 via NWC (`pay_offer`)
-Configure LNDK gRPC access:
+### Static Reusable BOLT12 Offer & Silent Payments
+Configure your static reusable offer string and/or BIP-352 Silent Payment address in `.env`:
 ```env
+# Displayed in the BOLT12 QR tab on the web portal and embedded into BIP-353 records
+LIGESS_BOLT12_OFFER=lno1...
+
+# Reusable on-chain silent payment address (appended to BIP-353 TXT record as &sp=sp1...)
+LIGESS_SILENT_PAYMENT_ADDRESS=sp1qq...
+```
+
+### Inbound BOLT12 & Silent Payments via BIP-353
+Inbound payments use human-readable DNS TXT records defined in [BIP-353](https://github.com/bitcoin/bips/blob/master/bip-0353.mediawiki):
+```dns
+user.user._bitcoin-payment.domain.com. IN TXT "bitcoin:?lno=lno1...&sp=sp1qq..."
+```
+You can verify and generate the DNS record for your domain with:
+```bash
+npm run bip353
+# or with explicit CLI arguments:
+node bin/bip353.js --user alice --domain mydomain.com --offer lno1... --sp sp1qq...
+```
+
+### Outbound BOLT12 via LNDK (`pay_offer`)
+For LND nodes, Ligess can route outbound BOLT12 offer payments (`pay_offer`) through the [LNDK](https://github.com/lndk-org/lndk) sidecar:
+```env
+LIGESS_LNDK_ENABLED=true
 LIGESS_LNDK_GRPC_HOST=127.0.0.1:7000
-LIGESS_LNDK_CERT_PATH=/path/to/lndk/tls.cert
-LIGESS_LNDK_MACAROON_PATH=/path/to/lnd/admin.macaroon
+LIGESS_LNDK_TLS_CERT=/path/to/lndk/tls.cert
+LIGESS_LNDK_MACAROON_HEX=02010... # Optional: defaults to LIGESS_LND_MACAROON
 ```
 Once enabled, NWC advertises `pay_offer` and routes BOLT12 offer payments through LNDK.
-
-### Inbound BOLT12 via BIP-353
-Inbound BOLT12 uses DNS TXT records defined in [BIP-353](https://github.com/bitcoin/bips/blob/master/bip-0353.mediawiki):
-```
-user.user._bitcoin-payment.domain.com. IN TXT "bitcoin:?lno=lno1..."
-```
-You can generate the DNS record for your domain with:
-```bash
-node bin/bip353.js --user alice --domain mydomain.com --offer lno1...
-```
 
 ---
 
@@ -470,7 +503,8 @@ ligess/
 │   │   ├── nwc.js           # Upstream NWC client (Alby Hub, Zeus, etc.)
 │   │   ├── ldk.js           # LDK Node / Server REST driver
 │   │   ├── blink.js         # Blink (Galoy) GraphQL driver
-│   │   └── cashu.js         # Cashu Mint (NUT-04/NUT-05) driver
+│   │   ├── cashu.js         # Cashu Mint (NUT-04/NUT-05) driver
+│   │   └── protobuf.js      # Lightweight zero-dependency wire decoder for LND macaroons
 │   ├── clients/
 │   │   └── lndk.js          # LNDK gRPC client for BOLT12 offers
 │   ├── nostr/
