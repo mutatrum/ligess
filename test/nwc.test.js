@@ -105,4 +105,32 @@ test('Nostr Wallet Connect (NIP-47)', async (t) => {
     assert.equal(decryptedResp.result_type, 'get_budget')
     assert.equal(decryptedResp.result.max_zap, 1000)
   })
+
+  await t.test('should advertise list_transactions, multi_pay_invoice, and pay_keysend', () => {
+    const methods = getSupportedMethods()
+    assert.ok(methods.includes('list_transactions'))
+    assert.ok(methods.includes('multi_pay_invoice'))
+    assert.ok(methods.includes('pay_keysend'))
+  })
+
+  await t.test('should execute list_transactions and return transactions array', async () => {
+    const res = await executeMethod('list_transactions', { limit: 10, offset: 0 })
+    assert.ok(Array.isArray(res.transactions))
+  })
+
+  await t.test('should reject multi_pay_invoice with empty or missing invoices', async () => {
+    await assert.rejects(async () => {
+      await executeMethod('multi_pay_invoice', { invoices: [] })
+    }, (err) => err.code === 'BAD_REQUEST')
+  })
+
+  await t.test('should reject pay_keysend with missing pubkey or amount', async () => {
+    await assert.rejects(async () => {
+      await executeMethod('pay_keysend', { amount: 1000 })
+    }, (err) => err.code === 'BAD_REQUEST')
+
+    await assert.rejects(async () => {
+      await executeMethod('pay_keysend', { pubkey: '02' + '00'.repeat(32), amount: -5 })
+    }, (err) => err.code === 'BAD_REQUEST')
+  })
 })

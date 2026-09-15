@@ -129,4 +129,56 @@ test('Nostr Stack & Zap Validation', async (t) => {
 
     assert.equal(db.getPendingZap(testHash), null)
   })
+
+  await t.test('should validate anonymous zap request with anon tag (NIP-57)', async () => {
+    const anonZapReq = finalizeEvent({
+      kind: 9734,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['p', pk],
+        ['relays', 'wss://relay.damus.io'],
+        ['amount', '10000'],
+        ['anon', '']
+      ],
+      content: 'Anon zap!'
+    }, sk)
+
+    const verified = await verifyZapRequest(anonZapReq, 10000)
+    assert.equal(verified.id, anonZapReq.id)
+  })
+
+  await t.test('should suppress P tag in kind 9735 receipt for anonymous zap (NIP-57)', async () => {
+    process.env.LIGESS_NOSTR_ZAPPER_PRIVATE_KEY = Buffer.from(sk).toString('hex')
+    const testHash = 'test_anon_settle_' + Date.now()
+    const anonZapReq = finalizeEvent({
+      kind: 9734,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['p', pk],
+        ['relays', 'wss://1.1.1.1:9999'],
+        ['amount', '1000'],
+        ['anon', '']
+      ],
+      content: 'Anonymous support'
+    }, sk)
+
+    db.storePendingZap(testHash, anonZapReq, '')
+
+    let loggedInfo = null
+    await handleInvoiceUpdate({
+      paymentHash: testHash,
+      settled: true,
+      amount: 1,
+      bolt11: 'lnbc...',
+      preImage: '00'.repeat(32)
+    }, {
+      info: (arg) => { loggedInfo = arg },
+      warn: () => {}
+    })
+
+    assert.ok(loggedInfo)
+    assert.equal(loggedInfo.anon, true)
+    assert.equal(loggedInfo.npub, 'anonymous')
+    assert.equal(db.getPendingZap(testHash), null)
+  })
 })

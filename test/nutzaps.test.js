@@ -9,7 +9,8 @@ const {
   getNutzapRelays,
   getP2PKKeys,
   buildNutzapInfoEvent,
-  processNutzapEvent
+  processNutzapEvent,
+  formatCashuPaymentRequest
 } = require("../src/nostr/nutzaps")
 
 describe("NIP-61 Nutzaps Engine", () => {
@@ -168,6 +169,48 @@ describe("NIP-61 Nutzaps Engine", () => {
     } finally {
       Wallet.prototype.createMeltQuote = originalCreateMeltQuote
       Wallet.prototype.meltProofs = originalMeltProofs
+    }
+  })
+
+  it("should format valid Cashu Payment Request (NUT-18 / NUT-26 Bech32m)", () => {
+    const creq = formatCashuPaymentRequest({
+      amount: 100,
+      mints: ["https://mint.minibits.cash/Bitcoin"],
+      unit: "sat",
+      description: "Coffee tip"
+    })
+
+    assert.ok(creq)
+    assert.ok(creq.startsWith("CREQB") || creq.startsWith("creq"))
+  })
+
+  it("should reject spent proofs on mint via NUT-07 checkProofsStates", async () => {
+    const originalCheckProofsStates = Wallet.prototype.checkProofsStates
+    try {
+      Wallet.prototype.checkProofsStates = async function () {
+        return [{ Y: "02" + "00".repeat(32), state: "SPENT", witness: null }]
+      }
+
+      const spentEvent = {
+        id: "spent_nutzap_" + Date.now(),
+        kind: 9321,
+        pubkey: "sender_spent",
+        tags: [
+          ["u", "https://mint.minibits.cash/Bitcoin"],
+          ["proof", JSON.stringify({ amount: 10, secret: "secret_spent", C: "c_spent", id: "00" })]
+        ]
+      }
+
+      const result = await processNutzapEvent(spentEvent, {
+        autoMelt: true,
+        getBackend: () => ({ createInvoice: async () => ({ bolt11: "lnbc..." }) }),
+        env: { LIGESS_NUTZAP_PRIVATE_KEY: testPrivKey }
+      })
+
+      assert.strictEqual(result.success, false)
+      assert.ok(result.reason.includes("already spent") || result.reason.includes("NUT-07"))
+    } finally {
+      Wallet.prototype.checkProofsStates = originalCheckProofsStates
     }
   })
 })

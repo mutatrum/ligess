@@ -74,10 +74,13 @@ const verifyZapRequest = async (zapRequest, queryAmount) => {
     }
   }
 
+  const isAnon = getTags(zapRequest.tags, 'anon').length > 0
+
   // If there is an (uppercase) P tag, validate P tag.
-  // There MUST be 0 or 1 P tags. If there is one, it MUST be equal to the zap request's pubkey.
+  // There MUST be 0 or 1 P tags. For public zaps, it MUST equal zapRequest.pubkey.
+  // For anonymous zaps, P tag is omitted or suppressed in the receipt.
   const Ptags = getTags(zapRequest.tags, 'P')
-  if (Ptags.length === 1 && Ptags[0][1] !== zapRequest.pubkey) {
+  if (!isAnon && Ptags.length === 1 && Ptags[0][1] !== zapRequest.pubkey) {
     throw new Error(`P tag is not equal to the pubkey on the zap request event`)
   }
 
@@ -123,12 +126,15 @@ const handleInvoiceUpdate = async (invoice, logger = console) => {
     content = zapRequest.content
   }
 
+  const isAnonZap = getTags(zapRequest.tags, 'anon').length > 0
+
   const tags = []
   const ptags = getTags(zapRequest.tags, 'p')
   tags.push(ptags[0])
 
+  // Omit P tag for anonymous zaps to protect payer identity (NIP-57)
   const Ptags = getTags(zapRequest.tags, 'P')
-  if (Ptags.length === 1) tags.push(Ptags[0])
+  if (!isAnonZap && Ptags.length === 1) tags.push(Ptags[0])
 
   const etags = getTags(zapRequest.tags, 'e')
   if (etags.length === 1) tags.push(etags[0])
@@ -163,7 +169,8 @@ const handleInvoiceUpdate = async (invoice, logger = console) => {
       msg: 'Invoice settled',
       note: zapNote.id,
       amount: invoice.amount,
-      npub: nip19.npubEncode(zapRequest.pubkey),
+      anon: isAnonZap,
+      npub: isAnonZap ? 'anonymous' : nip19.npubEncode(zapRequest.pubkey),
       comment: content
     })
   }

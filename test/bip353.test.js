@@ -79,4 +79,29 @@ describe('BIP-353 Helpers & DNS Verification', () => {
       dns.resolveTxt = originalResolveTxt
     }
   })
+
+  it('should format and verify BIP-353 record with BIP-352 Silent Payment (sp)', async () => {
+    const offer = 'lno1testoffer'
+    const sp = 'sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'
+    const record = formatDnsTxtRecord('alice', 'hodl.camp', offer, sp)
+    assert.strictEqual(record.value, `bitcoin:?lno=${offer}&sp=${sp}`)
+
+    const uri = getBip353Uri(offer, sp)
+    assert.strictEqual(uri, `bitcoin:?lno=${offer}&sp=${sp}`)
+
+    const originalResolveTxt = dns.resolveTxt
+    dns.resolveTxt = async () => [
+      [`bitcoin:?lno=${offer}&sp=${sp}`]
+    ]
+
+    try {
+      const res = await verifyBip353Dns('alice', 'hodl.camp', offer, sp)
+      assert.strictEqual(res.status, 'FOUND')
+      assert.strictEqual(res.matches, true)
+      assert.strictEqual(res.offer, offer)
+      assert.strictEqual(res.silentPayment, sp)
+    } finally {
+      dns.resolveTxt = originalResolveTxt
+    }
+  })
 })

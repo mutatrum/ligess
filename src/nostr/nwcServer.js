@@ -25,7 +25,17 @@ const _nostrWalletConnectBudgetDay = process.env.LIGESS_NOSTR_WALLET_CONNECT_BUD
 const isWalletConnectEnabled = () => _nostrWalletConnectEncryptPrivKey !== null && _nostrWalletConnectEncryptPrivKey !== undefined
 
 function getSupportedMethods() {
-  const methods = ['pay_invoice', 'get_balance', 'get_info', 'make_invoice', 'lookup_invoice', 'get_budget']
+  const methods = [
+    'pay_invoice',
+    'multi_pay_invoice',
+    'pay_keysend',
+    'get_balance',
+    'get_info',
+    'make_invoice',
+    'lookup_invoice',
+    'list_transactions',
+    'get_budget'
+  ]
   if (lndkClient.isEnabled()) methods.push('pay_offer')
   return methods
 }
@@ -410,6 +420,136 @@ async function executeMethod(method, params, logger = console) {
 
       return {
         preimage: paid.paymentPreimage
+      }
+    }
+
+    case 'list_transactions': {
+      const from = params?.from ? Number(params.from) : undefined
+      const until = params?.until ? Number(params.until) : undefined
+      const limit = params?.limit ? Number(params.limit) : 50
+      const offset = params?.offset ? Number(params.offset) : 0
+      const unpaid = params?.unpaid === true || params?.unpaid === 'true'
+      const type = params?.type
+
+      let client = null
+      try { client = getClient() } catch (_) {}
+      let txs = []
+      if (client && typeof client.listTransactions === 'function') {
+        txs = await client.listTransactions({ from, until, limit, offset, unpaid, type })
+      } else {
+        const spends = db.getAllNwcSpends(30 * 24 * 60 * 60 * 1000)
+        txs = spends.map(s => ({
+          type: 'outgoing',
+          invoice: '',
+          description: s.description || '',
+          description_hash: null,
+          preimage: null,
+          payment_hash: '',
+          amount: (s.amount || 0) * 1000,
+          fees_paid: 0,
+          created_at: Math.floor(s.timestamp / 1000),
+          expires_at: null,
+          settled_at: Math.floor(s.timestamp / 1000)
+        }))
+      }
+
+      return {
+        transactions: txs
+      }
+    }
+
+    case 'multi_pay_invoice': {
+      if (!params || !Array.isArray(params.invoices) || params.invoices.length === 0) {
+        const err = new Error('Missing or invalid invoices array parameter')
+        err.code = 'BAD_REQUEST'
+        throw err
+      }
+
+      const results = []
+      for (const item of params.invoices) {
+        const invoiceStr = item.invoice
+        const id = item.id || null
+        if (!invoiceStr) {
+          results.push({
+            id,
+            invoice: invoiceStr || '',
+            preimage: null,
+            error: { code: 'BAD_REQUEST', message: 'Missing invoice in multi_pay_invoice entry' }
+          })
+          continue
+        }
+
+        try {
+          const decoded = bolt11.decode(invoiceStr)
+          const satoshis = decoded.satoshis || (item.amount ? Math.ceil(Number(item.amount) / 1000) : 0)
+          verifyZapAmount(satoshis, logger)
+
+          const paid = await getClient().payInvoice({
+            bolt11: decoded.paymentRequest,
+            amountMsats: item.amount
+          })
+          const paymentHash = decoded.tagsObject.payment_hash || ''
+          db.recordNwcSpend(satoshis, paymentHash)
+
+          results.push({
+            id,
+            invoice: invoiceStr,
+            preimage: paid.paymentPreimage,
+            error: null
+          })
+        } catch (error) {
+          results.push({
+            id,
+            invoice: invoiceStr,
+            preimage: null,
+            error: {
+              code: mapErrorCode(error),
+              message: error.message
+            }
+          })
+        }
+      }
+
+      return {
+        invoices: results
+      }
+    }
+
+    case 'pay_keysend': {
+      if (!params || !params.pubkey) {
+        const err = new Error('Missing pubkey parameter for keysend')
+        err.code = 'BAD_REQUEST'
+        throw err
+      }
+      const amountMsats = Number(params.amount)
+      if (!amountMsats || isNaN(amountMsats) || amountMsats <= 0) {
+        const err = new Error('Missing or invalid amount parameter for keysend')
+        err.code = 'BAD_REQUEST'
+        throw err
+      }
+
+      const satoshis = Math.ceil(amountMsats / 1000)
+      verifyZapAmount(satoshis, logger)
+
+      const client = getClient()
+      if (typeof client.payKeysend !== 'function') {
+        const err = new Error('Keysend is not supported by the active Lightning backend')
+        err.code = 'NOT_IMPLEMENTED'
+        throw err
+      }
+
+      const paid = await client.payKeysend({
+        pubkey: params.pubkey,
+        amountMsats,
+        preimage: params.preimage,
+        tlvRecords: params.tlv_records
+      })
+
+      db.recordNwcSpend(satoshis, paid.paymentHash || params.pubkey)
+
+      return {
+        preimage: paid.paymentPreimage,
+        payment_hash: paid.paymentHash
       }
     }
 

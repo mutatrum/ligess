@@ -151,6 +151,100 @@ class ClnBackend extends Backend {
     }
   }
 
+  async payKeysend({ pubkey, amountMsats, tlvRecords = [] }) {
+    if (!pubkey || !amountMsats) {
+      const err = new Error('Missing pubkey or amount for keysend')
+      err.code = 'BAD_REQUEST'
+      throw err
+    }
+
+    const data = {
+      destination: pubkey,
+      amount_msat: amountMsats
+    }
+
+    if (Array.isArray(tlvRecords) && tlvRecords.length > 0) {
+      data.extratlvs = {}
+      for (const rec of tlvRecords) {
+        if (rec && rec.type !== undefined && rec.value !== undefined) {
+          data.extratlvs[String(rec.type)] = typeof rec.value === 'string' ? rec.value : Buffer.from(rec.value).toString('hex')
+        }
+      }
+    }
+
+    const res = await this._request('POST', '/v1/keysend', data)
+    return {
+      paymentPreimage: res.payment_preimage || '',
+      paymentHash: res.payment_hash || '',
+      feesAmountMsats: Math.max(0, Number(res.amount_sent_msat || 0) - Number(res.amount_msat || 0))
+    }
+  }
+
+  async listTransactions({ from, until, limit = 50, offset = 0, unpaid = false, type } = {}) {
+    const transactions = []
+    const fetchIncoming = !type || type === 'incoming'
+    const fetchOutgoing = !type || type === 'outgoing'
+
+    if (fetchIncoming) {
+      try {
+        const res = await this._request('GET', '/v1/invoice/listInvoices')
+        const rawInvoices = Array.isArray(res.invoices) ? res.invoices : []
+        for (const inv of rawInvoices) {
+          const isSettled = inv.status === 'paid'
+          if (!unpaid && !isSettled) continue
+          const createdAt = Number(inv.expires_at ? inv.expires_at - 3600 : 0)
+          if (from && createdAt < from) continue
+          if (until && createdAt > until) continue
+
+          transactions.push({
+            type: 'incoming',
+            invoice: inv.bolt11 || '',
+            description: inv.description || '',
+            description_hash: null,
+            preimage: inv.payment_preimage || null,
+            payment_hash: inv.payment_hash,
+            amount: Number(inv.amount_msat || 0),
+            fees_paid: 0,
+            created_at: createdAt,
+            expires_at: Number(inv.expires_at || 0),
+            settled_at: isSettled && inv.paid_at ? Number(inv.paid_at) : null
+          })
+        }
+      } catch (_) {}
+    }
+
+    if (fetchOutgoing) {
+      try {
+        const res = await this._request('GET', '/v1/pay/listPays')
+        const rawPays = Array.isArray(res.pays) ? res.pays : []
+        for (const p of rawPays) {
+          const isSettled = p.status === 'complete'
+          if (!unpaid && !isSettled) continue
+          const createdAt = Number(p.created_at || 0)
+          if (from && createdAt < from) continue
+          if (until && createdAt > until) continue
+
+          transactions.push({
+            type: 'outgoing',
+            invoice: p.bolt11 || '',
+            description: p.description || '',
+            description_hash: null,
+            preimage: p.preimage || null,
+            payment_hash: p.payment_hash,
+            amount: Number(p.amount_msat || 0),
+            fees_paid: Math.max(0, Number(p.amount_sent_msat || 0) - Number(p.amount_msat || 0)),
+            created_at: createdAt,
+            expires_at: null,
+            settled_at: isSettled && p.created_at ? Number(p.created_at) : null
+          })
+        }
+      } catch (_) {}
+    }
+
+    transactions.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    return transactions.slice(offset, offset + limit)
+  }
+
   startWatchingInvoices() {
     if (this.isWatching) return
     this.isWatching = true

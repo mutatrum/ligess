@@ -1,5 +1,6 @@
 const http = require('http')
 const https = require('https')
+const crypto = require('crypto')
 const Backend = require('./base')
 
 let SocksProxyAgent = null
@@ -131,6 +132,130 @@ class LndBackend extends Backend {
       alias: res.alias || '',
       pubkey: res.identity_pubkey || '',
       version: res.version || ''
+    }
+  }
+
+  async listTransactions({ from, until, limit = 50, offset = 0, unpaid = false, type } = {}) {
+    const transactions = []
+    const fetchIncoming = !type || type === 'incoming'
+    const fetchOutgoing = !type || type === 'outgoing'
+
+    if (fetchIncoming) {
+      try {
+        const invRes = await this._request('GET', `/v1/invoices?reversed=true&num_max_invoices=${limit}&index_offset=${offset}`)
+        const rawInvoices = invRes.invoices || []
+        for (const raw of rawInvoices) {
+          const isSettled = raw.settled === true || raw.state === 'SETTLED'
+          if (!unpaid && !isSettled) continue
+
+          const createdAt = Number(raw.creation_date || 0)
+          if (from && createdAt < from) continue
+          if (until && createdAt > until) continue
+
+          const paymentHash = raw.r_hash ? (
+            raw.r_hash.length === 64 ? raw.r_hash : Buffer.from(raw.r_hash, 'base64').toString('hex')
+          ) : ''
+          const preImage = raw.r_preimage ? (
+            raw.r_preimage.length === 64 ? raw.r_preimage : Buffer.from(raw.r_preimage, 'base64').toString('hex')
+          ) : null
+          const descHash = raw.description_hash ? (
+            raw.description_hash.length === 64 ? raw.description_hash : Buffer.from(raw.description_hash, 'base64').toString('hex')
+          ) : null
+
+          transactions.push({
+            type: 'incoming',
+            invoice: raw.payment_request || '',
+            description: raw.memo || '',
+            description_hash: descHash,
+            preimage: preImage,
+            payment_hash: paymentHash,
+            amount: Number(raw.value_msat || (Number(raw.value || 0) * 1000)),
+            fees_paid: 0,
+            created_at: createdAt,
+            expires_at: createdAt + Number(raw.expiry || 3600),
+            settled_at: isSettled && raw.settle_date && raw.settle_date !== '0' ? Number(raw.settle_date) : null
+          })
+        }
+      } catch (_) {}
+    }
+
+    if (fetchOutgoing) {
+      try {
+        const payRes = await this._request('GET', `/v1/payments?reversed=true&max_payments=${limit}&index_offset=${offset}`)
+        const rawPayments = payRes.payments || []
+        for (const p of rawPayments) {
+          const createdAt = Math.floor(Number(p.creation_time_ns ? Number(p.creation_time_ns) / 1e9 : (p.creation_date || 0)))
+          if (from && createdAt < from) continue
+          if (until && createdAt > until) continue
+
+          const isSettled = p.status === 'SUCCEEDED'
+          if (!unpaid && !isSettled) continue
+
+          transactions.push({
+            type: 'outgoing',
+            invoice: p.payment_request || '',
+            description: '',
+            description_hash: null,
+            preimage: p.payment_preimage || null,
+            payment_hash: p.payment_hash || '',
+            amount: Number(p.value_msat || (Number(p.value_sat || 0) * 1000)),
+            fees_paid: Number(p.fee_msat || 0),
+            created_at: createdAt,
+            expires_at: null,
+            settled_at: isSettled ? createdAt : null
+          })
+        }
+      } catch (_) {}
+    }
+
+    transactions.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    return transactions.slice(0, limit)
+  }
+
+  async payKeysend({ pubkey, amountMsats, preimage, tlvRecords = [] } = {}) {
+    if (!pubkey || !amountMsats) {
+      const err = new Error('Missing pubkey or amount for keysend')
+      err.code = 'BAD_REQUEST'
+      throw err
+    }
+
+    const preImageHex = preimage || crypto.randomBytes(32).toString('hex')
+    const paymentHashHex = crypto.createHash('sha256').update(Buffer.from(preImageHex, 'hex')).digest('hex')
+
+    const destCustomRecords = {
+      '5482373484': Buffer.from(preImageHex, 'hex').toString('base64')
+    }
+
+    if (Array.isArray(tlvRecords)) {
+      for (const rec of tlvRecords) {
+        if (rec && rec.type !== undefined && rec.value !== undefined) {
+          destCustomRecords[String(rec.type)] = typeof rec.value === 'string'
+            ? Buffer.from(rec.value, 'hex').toString('base64')
+            : Buffer.from(rec.value).toString('base64')
+        }
+      }
+    }
+
+    const body = {
+      dest: Buffer.from(pubkey, 'hex').toString('base64'),
+      amt_msat: String(amountMsats),
+      payment_hash: Buffer.from(paymentHashHex, 'hex').toString('base64'),
+      dest_custom_records: destCustomRecords,
+      timeout_seconds: 60,
+      fee_limit_msat: String(Math.max(10000, Math.floor(amountMsats * 0.05)))
+    }
+
+    const res = await this._request('POST', '/v1/channels/transactions', body)
+    if (res.payment_error) {
+      const err = new Error(`Keysend failed: ${res.payment_error}`)
+      err.code = 'PAYMENT_FAILED'
+      throw err
+    }
+
+    return {
+      paymentPreimage: preImageHex,
+      paymentHash: paymentHashHex,
+      feesAmountMsats: Number(res.payment_route?.total_fees_msat || 0)
     }
   }
 

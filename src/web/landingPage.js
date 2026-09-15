@@ -1,5 +1,6 @@
 const { REPO_URL } = require("../config/constants")
 const { getProfileMetadata } = require("../nostr/metadata")
+const { isNutzapEnabled, formatCashuPaymentRequest } = require("../nostr/nutzaps")
 const { generateQrSvg } = require("./qrSvg")
 
 const DEFAULT_FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fde047"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#d97706"/></linearGradient><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e1b2e"/><stop offset="100%" stop-color="#0f1016"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)" stroke="#f59e0b" stroke-opacity="0.35" stroke-width="1.2"/><path d="M18 3 L8.5 16.5 L14.5 16.5 L12.5 29 L23.5 14 L17.5 14 Z" fill="url(#b)"/></svg>`
@@ -15,14 +16,26 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;")
 }
 
-function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL, picture: customPicture = null, lnurlpUrl = null }) {
+function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Offer = null, repoUrl = REPO_URL, picture: customPicture = null, lnurlpUrl = null, silentPayment: customSilentPayment = null, cashuRequest: customCashuRequest = null }) {
   const meta = getProfileMetadata()
   const displayName = escapeHtml(meta.display_name || meta.name || username)
   const about = escapeHtml(meta.about || "Send Bitcoin instantly via Lightning Address or Nostr Zaps.")
   const picture = customPicture ? escapeHtml(customPicture) : (meta.picture ? escapeHtml(meta.picture) : (process.env.LIGESS_RELAY_ICON ? escapeHtml(process.env.LIGESS_RELAY_ICON) : null))
   const safeIdentifier = escapeHtml(identifier)
   const safeBolt12 = bolt12Offer ? escapeHtml(bolt12Offer) : null
+  const silentPaymentAddr = customSilentPayment || process.env.LIGESS_SILENT_PAYMENT_ADDRESS || null
+  const safeSilentPayment = silentPaymentAddr ? escapeHtml(silentPaymentAddr) : null
+  const safeRecipientPubkey = escapeHtml(process.env.LIGESS_NOSTR_PUBKEY || meta.pubkey || "")
   const safeLnurlpUrl = escapeHtml(lnurlpUrl || ("lnurlp://" + domain + "/.well-known/lnurlp/" + username))
+
+  let safeCashu = customCashuRequest ? escapeHtml(customCashuRequest) : null
+  if (!safeCashu && isNutzapEnabled()) {
+    try {
+      safeCashu = formatCashuPaymentRequest({ description: `Tip to ${displayName}` })
+    } catch (_) {}
+  }
+  const cashuUri = safeCashu ? ("cashu:" + safeCashu) : null
+  const cashuSvg = safeCashu ? generateQrSvg(safeCashu) : null
 
   // Universal Lightning Address & BIP-353 URI (ultra-compact 25x25 grid, scans in <0.02s)
   const lightningAddressUri = "lightning:" + safeIdentifier
@@ -411,10 +424,11 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         <p class="about">${about}</p>
       </div>
 
-      ${safeBolt12 ? `
+      ${(safeBolt12 || safeCashu) ? `
       <div class="tabs">
         <button class="tab-btn active" id="tabLightning" onclick="switchProtocol('lightning')">⚡ Lightning Address</button>
-        <button class="tab-btn" id="tabBolt12" onclick="switchProtocol('bolt12')">📜 BOLT12 Offer</button>
+        ${safeBolt12 ? `<button class="tab-btn" id="tabBolt12" onclick="switchProtocol('bolt12')">📜 BOLT12 Offer</button>` : ""}
+        ${safeCashu ? `<button class="tab-btn" id="tabCashu" onclick="switchProtocol('cashu')">🥜 Cashu Ecash</button>` : ""}
       </div>` : ""}
 
       <div id="viewLightning" class="qr-view">
@@ -427,13 +441,18 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
           <span>⚡ Scan with any Lightning or BIP-353 wallet</span>
         </div>
         <details class="offer-details">
-          <summary>Need LNURL / Bech32 links?</summary>
+          <summary>Need LNURL, BIP-352 or Bech32 links?</summary>
           <div style="margin-top:12px;text-align:center;">
             <div style="width:180px;height:180px;margin:0 auto;">${legacyLnurlSvg}</div>
             <code style="display:block;margin-top:8px;word-break:break-all;font-size:11px;">${legacyLnurlUri}</code>
             <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
               <span>LUD-17 scheme: </span><a href="${safeLnurlpUrl}" style="color:#fbbf24;word-break:break-all;">${safeLnurlpUrl}</a>
             </div>
+            ${safeSilentPayment ? `
+            <div style="margin-top:10px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;text-align:left;">
+              <span style="color:#a78bfa;font-weight:600;font-size:11px;">🔒 BIP-352 Silent Payment Address:</span>
+              <code style="display:block;margin-top:4px;word-break:break-all;font-size:10px;color:var(--text-muted);">${safeSilentPayment}</code>
+            </div>` : ""}
           </div>
         </details>
       </div>
@@ -454,6 +473,22 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         </details>
       </div>` : ""}
 
+      ${safeCashu ? `
+      <div id="viewCashu" class="qr-view" style="display: none;">
+        <div class="qr-container">
+          <a href="${cashuUri}" title="Scan or click to open in Cashu wallet">
+            ${cashuSvg}
+          </a>
+        </div>
+        <div class="qr-caption">
+          <span>🥜 Scan with Minibits, eNuts or Cashu wallet</span>
+        </div>
+        <details class="offer-details">
+          <summary>View Cashu Payment Request</summary>
+          <code style="word-break:break-all;font-size:10px;">${safeCashu}</code>
+        </details>
+      </div>` : ""}
+
       <div class="amount-presets">
         <button class="preset-btn active" onclick="selectAmount(21)">21 sats</button>
         <button class="preset-btn" onclick="selectAmount(100)">100</button>
@@ -466,10 +501,15 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
           <span>⚡</span>
           <span>Send <span id="btnAmountText">21</span> sats via WebLN</span>
         </button>
-        <button class="btn btn-secondary" onclick="copyAddress()">
+        <button class="btn btn-secondary" id="btnCopyAddress" onclick="copyAddress()">
           <span>📋</span>
           <span>Copy Lightning Address</span>
         </button>
+        ${safeCashu ? `
+        <button class="btn btn-secondary" id="btnCopyCashu" style="display: none;" onclick="copyCashu()">
+          <span>🥜</span>
+          <span>Copy Cashu Request</span>
+        </button>` : ""}
       </div>
     </div>
 
@@ -483,6 +523,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   <script>
     let currentSats = 21;
     const identifier = "${safeIdentifier}";
+    const cashuRequest = "${safeCashu || ""}";
 
     function showToast(msg) {
       const toast = document.getElementById("toast");
@@ -494,6 +535,13 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     function copyAddress() {
       navigator.clipboard.writeText(identifier).then(() => {
         showToast("⚡ Address copied to clipboard!");
+      });
+    }
+
+    function copyCashu() {
+      if (!cashuRequest) return;
+      navigator.clipboard.writeText(cashuRequest).then(() => {
+        showToast("🥜 Cashu request copied to clipboard!");
       });
     }
 
@@ -509,13 +557,31 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     function switchProtocol(type) {
       const isLightning = type === "lightning";
-      document.getElementById("tabLightning").classList.toggle("active", isLightning);
-      const tabB12 = document.getElementById("tabBolt12");
-      if (tabB12) tabB12.classList.toggle("active", !isLightning);
+      const isBolt12 = type === "bolt12";
+      const isCashu = type === "cashu";
 
-      document.getElementById("viewLightning").style.display = isLightning ? "block" : "none";
+      const tabL = document.getElementById("tabLightning");
+      if (tabL) tabL.classList.toggle("active", isLightning);
+      const tabB12 = document.getElementById("tabBolt12");
+      if (tabB12) tabB12.classList.toggle("active", isBolt12);
+      const tabC = document.getElementById("tabCashu");
+      if (tabC) tabC.classList.toggle("active", isCashu);
+
+      const viewL = document.getElementById("viewLightning");
+      if (viewL) viewL.style.display = isLightning ? "block" : "none";
       const viewB12 = document.getElementById("viewBolt12");
-      if (viewB12) viewB12.style.display = !isLightning ? "block" : "none";
+      if (viewB12) viewB12.style.display = isBolt12 ? "block" : "none";
+      const viewC = document.getElementById("viewCashu");
+      if (viewC) viewC.style.display = isCashu ? "block" : "none";
+
+      const btnWebln = document.getElementById("weblnBtn");
+      if (btnWebln) btnWebln.style.display = isCashu ? "none" : "flex";
+      const presets = document.querySelector(".amount-presets");
+      if (presets) presets.style.display = isCashu ? "none" : "grid";
+      const btnCopyAddr = document.getElementById("btnCopyAddress");
+      if (btnCopyAddr) btnCopyAddr.style.display = isCashu ? "none" : "flex";
+      const btnCopyC = document.getElementById("btnCopyCashu");
+      if (btnCopyC) btnCopyC.style.display = isCashu ? "flex" : "none";
     }
 
     async function payWithWebLN() {
@@ -532,7 +598,26 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         await window.webln.enable();
 
         const msats = currentSats * 1000;
-        const res = await fetch("/.well-known/lnurlp/" + encodeURIComponent(identifier.split("@")[0]) + "?amount=" + msats);
+        let zapQuery = "";
+        if (window.nostr && "${safeRecipientPubkey}") {
+          try {
+            btn.innerHTML = "<span>⏳</span><span>Signing Nostr zap...</span>";
+            const zapEvent = {
+              kind: 9734,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: [
+                ["relays", "wss://relay.damus.io", "wss://nos.lol"],
+                ["amount", String(msats)],
+                ["p", "${safeRecipientPubkey}"]
+              ],
+              content: "Zapped via Ligess Web Portal"
+            };
+            const signedZap = await window.nostr.signEvent(zapEvent);
+            zapQuery = "&nostr=" + encodeURIComponent(JSON.stringify(signedZap));
+          } catch (_) {}
+        }
+
+        const res = await fetch("/.well-known/lnurlp/" + encodeURIComponent(identifier.split("@")[0]) + "?amount=" + msats + zapQuery);
         const data = await res.json();
 
         if (data.status === "ERROR") {

@@ -166,6 +166,27 @@ class NwcBackend extends Backend {
     }
   }
 
+  async payKeysend({ pubkey, amountMsats, preimage, tlvRecords = [] }) {
+    const params = {
+      pubkey,
+      amount: amountMsats
+    }
+    if (preimage) params.preimage = preimage
+    if (tlvRecords && tlvRecords.length > 0) params.tlv_records = tlvRecords
+
+    const res = await this._sendNwcCommand('pay_keysend', params)
+    return {
+      paymentPreimage: res.preimage || '',
+      paymentHash: res.payment_hash || '',
+      feesAmountMsats: Number(res.fees_paid || 0)
+    }
+  }
+
+  async listTransactions(params = {}) {
+    const res = await this._sendNwcCommand('list_transactions', params)
+    return res.transactions || []
+  }
+
   startWatchingInvoices() {
     if (this.isWatching) return
     this.isWatching = true

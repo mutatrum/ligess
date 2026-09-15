@@ -55,6 +55,36 @@ class Backend extends EventEmitter {
   }
 
   /**
+   * List transactions (invoices and/or payments)
+   * @param {Object} [params]
+   * @param {number} [params.from] Timestamp in seconds
+   * @param {number} [params.until] Timestamp in seconds
+   * @param {number} [params.limit] Max items
+   * @param {number} [params.offset] Offset
+   * @param {boolean} [params.unpaid] Whether to include unpaid invoices
+   * @param {string} [params.type] 'incoming' or 'outgoing'
+   * @returns {Promise<Array<Object>>}
+   */
+  async listTransactions(params = {}) {
+    return []
+  }
+
+  /**
+   * Spontaneous keysend payment (bLIP-0003)
+   * @param {Object} params
+   * @param {string} params.pubkey Target node pubkey hex
+   * @param {number} params.amountMsats Amount in msats
+   * @param {string} [params.preimage] Optional 32-byte hex preimage
+   * @param {Array<{type: number, value: string}>} [params.tlvRecords] Optional TLV records
+   * @returns {Promise<{ paymentPreimage: string, feesAmountMsats: number }>}
+   */
+  async payKeysend(params) {
+    const err = new Error('payKeysend not implemented on this backend')
+    err.code = 'NOT_IMPLEMENTED'
+    throw err
+  }
+
+  /**
    * Start watching for settled invoices and emit 'invoice-updated'
    */
   startWatchingInvoices() {

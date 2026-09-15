@@ -50,7 +50,8 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 - 🎨 **Modern Web Landing Page & WebLN**:
   - Interactive glassmorphic dark-mode web portal at `https://YOURDOMAIN.COM/`.
   - **WebLN One-Click Pay**: Instant payments with browser extensions (Alby, Zeus).
-  - Preset sat buttons (21, 100, 1000, 5000), copy buttons, and dual-stack LNURL & BOLT12 QR codes.
+  - Multi-protocol tabs with real-time switching between **Lightning Address & BIP-353**, **BOLT12 Offers**, and **Cashu Ecash (`CREQB...`)**.
+  - Interactive sat preset buttons (21, 100, 1000, 5000), copy actions, and streamlined Alphanumeric QR codes.
 
 ---
 
@@ -74,6 +75,28 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 | **LDK** | Native REST | ✅ Polling stream | `LIGESS_LDK_URL`, `LIGESS_LDK_API_KEY` |
 | **Blink** | GraphQL API | ✅ Polling stream | `LIGESS_BLINK_API_KEY`, `LIGESS_BLINK_URL` |
 | **Cashu** | NUT-04 / NUT-05 | ✅ Quote status stream | `LIGESS_CASHU_MINT_URL` |
+ 
+### Backend Capabilities Matrix
+
+The matrix below shows which features and protocols are supported across each backend driver in Ligess:
+
+| Backend | Inbound Invoices | Real-Time Settlement | Outbound Pay | Keysend (`pay_keysend`) | Tx History (`list_transactions`) | Nostr Zaps (NIP-57) | Nutzap Auto-Melt (NIP-61) | BOLT12 Offers |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **LND** | ✅ | ✅ (SSE Push) | ✅ | ✅ (TLV 5482373484) | ✅ | ✅ | ✅ | ✅ (via LNDK) |
+| **CLN** | ✅ | ✅ (Polling) | ✅ | ✅ (`/v1/keysend`) | ✅ | ✅ | ✅ | ✅ (Native) |
+| **Upstream NWC** | ✅ | ✅ (Relay) | ✅ | ✅ (Proxied) | ✅ (Proxied) | ✅ | ✅ | ⚠️ (Depends on upstream) |
+| **Phoenixd** | ✅ | ✅ (SSE Push) | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ (Native) |
+| **LNbits** | ✅ | ✅ (Polling) | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Eclair** | ✅ | ✅ (Polling) | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **LDK Node** | ✅ | ✅ (Polling) | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Blink** | ✅ | ✅ (Polling) | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Cashu** | ✅ (Mint Quote) | ✅ (Quote Check) | ✅ (Melt Quote) | ❌ | ❌ | ✅ | ✅ | ❌ |
+
+> **Notes on Matrix Capabilities:**
+> - **Inbound & Zaps**: All 9 backends support generating invoices for Lightning Address (`name@domain.com`), LNURL-pay (LUD-01..21), Nostr Zaps (NIP-57), and Nutzap auto-melting (NIP-61).
+> - **Keysend (bLIP-0003)**: Fully supported for LND, CLN, and upstream NWC backends with custom TLV record support.
+> - **Transaction History (`list_transactions`)**: Fully supported for LND, CLN, and upstream NWC backends for client wallets inquiring history via NIP-47.
+> - **BOLT12**: Supported natively in CLN and Phoenixd, and supported in LND via the [LNDK](https://github.com/lndk-org/lndk) sidecar integration.
 
 ---
 
@@ -87,17 +110,18 @@ Ligess is built to be a fully standards-compliant personal sovereign payment ser
 | :--- | :--- | :---: | :--- |
 | **[NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)** | Basic Protocol Flow | ✅ | Event serialization, Schnorr signatures, `finalizeEvent` signing |
 | **[NIP-04](https://github.com/nostr-protocol/nips/blob/master/04.md)** | Encrypted Direct Messages | ✅ | Legacy AES-CBC fallback for Nostr Wallet Connect |
-| **[NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md)** | DNS Identifiers | ✅ | `GET /.well-known/nostr.json?name=<username>` identity verification |
+| **[NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md)** | DNS Identifiers & Relay Discovery | ✅ | `GET /.well-known/nostr.json?name=<username>` with dynamic pubkey & `relays` map |
+| **[NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md)** | Browser Signer (`window.nostr`) | ✅ | Web landing page 1-click zap note signing via browser extension |
 | **[NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md)** | Relay Information Document | ✅ | Dynamic metadata, version, and `supported_nips` advertisement on `/relay/` |
 | **[NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md)** | bech32-encoded entities | ✅ | Parse and display `npub1...`, `nsec1...` keys throughout server |
 | **[NIP-33](https://github.com/nostr-protocol/nips/blob/master/33.md)** | Parameterized Replaceable Events | ✅ | `a` tag coordinate validation and forwarding in zap requests |
 | **[NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md)** | Relay Authentication | ✅ | Optional client authentication for private NWC relay access |
 | **[NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md)** | Versioned Encrypted Payloads | ✅ | Modern ChaCha20-Poly1305 v2 encryption for NWC |
-| **[NIP-47](https://github.com/nostr-protocol/nips/blob/master/47.md)** | Nostr Wallet Connect (NWC) | ✅ | Server & outbound client relay, budget tracking, multiple payment methods |
-| **[NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md)** | Lightning Zaps | ✅ | Kind 9734 zap requests, description hash validation, Kind 9735 receipts |
+| **[NIP-47](https://github.com/nostr-protocol/nips/blob/master/47.md)** | Nostr Wallet Connect (NWC) | ✅ | Server & outbound client relay, `list_transactions`, `multi_pay_invoice`, `pay_keysend`, `pay_offer`, budget tracking |
+| **[NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md)** | Lightning Zaps & Private Zaps | ✅ | Kind 9734 zap requests, description hash validation, Kind 9735 receipts, anonymous zaps (`anon` tag) |
 | **[NIP-61](https://github.com/nostr-protocol/nips/blob/master/61.md)** | Nutzaps (Cashu over Nostr) | ✅ | Kind 10019 info announcement, Kind 9321 receiver, P2PK witness & Auto-Melt |
 
-### Lightning Network Specifications (LUDs & BOLTs)
+### Lightning Network Specifications (LUDs, BOLTs & bLIPs)
 
 | Specification | Title | Status | Implementation in Ligess |
 | :--- | :--- | :---: | :--- |
@@ -111,16 +135,22 @@ Ligess is built to be a fully standards-compliant personal sovereign payment ser
 | **[LUD-18](https://github.com/lnurl/luds/blob/luds/18.md)** | Payer Identity (`payerData`) | ✅ | Advertises optional payerData (name, identifier, email, pubkey) and attaches to invoice memos |
 | **[LUD-20](https://github.com/lnurl/luds/blob/luds/20.md)** | Long Payment Description | ✅ | `text/long-desc` entry in metadata and invoice description hashes (`LIGESS_LONG_DESCRIPTION`) |
 | **[LUD-21](https://github.com/lnurl/luds/blob/luds/21.md)** | Payment Verification Endpoint | ✅ | `verify` callback URL and `GET /verify/:paymentHash` invoice settlement query |
+| **[BOLT #04](https://github.com/lightning/bolts/blob/master/04-onion-routing.md)** | Failure Code Mapping | ✅ | Transparent routing error code mappings in NWC and payment callbacks |
 | **[BOLT #11](https://github.com/lightning/bolts/blob/master/11-payment-encoding.md)** | Invoice Protocol | ✅ | Zero-dependency Bech32 invoice parsing and validation |
 | **[BOLT #12](https://github.com/lightning/bolts/blob/master/12-offer-encoding.md)** | Offers Protocol | ✅ | Native `lno1...` offers, Alphanumeric QR codes, NWC `pay_offer`, and LNDK |
+| **[bLIP-0003](https://github.com/lightning/blips/blob/master/blip-0003.md)** | Keysend Spontaneous Payments | ✅ | Direct keysend execution and TLV record support in NWC (`pay_keysend`) |
 
 ### Bitcoin, Cashu & Web Standards (BIPs & NUTs)
 
 | Standard | Title | Status | Implementation in Ligess |
 | :--- | :--- | :---: | :--- |
 | **[BIP-353](https://github.com/bitcoin/bips/blob/master/bip-0353.mediawiki)** | DNS Payment Instructions | ✅ | Multi-chunk RFC 1035 TXT verification on boot (`npm run bip353`) |
-| **[BIP-173](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) / [BIP-350](https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki)** | Bech32 & Bech32m | ✅ | Case-insensitive encoding for LNURL, BOLT12, and Nostr keys |
+| **[BIP-352](https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki)** | Silent Payments | ✅ | Reusable private on-chain Bitcoin address (`sp1...`) in BIP-353 DNS and web portal |
+| **[BIP-173](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) / [BIP-350](https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki)** | Bech32 & Bech32m | ✅ | Case-insensitive encoding for LNURL, BOLT12, Cashu, and Nostr keys |
+| **[NUT-04](https://github.com/cashubtc/nuts/blob/main/04.md) / [NUT-05](https://github.com/cashubtc/nuts/blob/main/05.md)** | Minting & Melting | ✅ | Lightning-to-ecash and ecash-to-Lightning gateway support |
+| **[NUT-07](https://github.com/cashubtc/nuts/blob/main/07.md)** | Token State Check | ✅ | Real-time proof state checking (`/v1/checkstate`) before melting Nutzap ecash |
 | **[NUT-10](https://github.com/cashubtc/nuts/blob/main/10.md) / [NUT-11](https://github.com/cashubtc/nuts/blob/main/11.md)** | Cashu P2PK Conditions | ✅ | SECP256k1 parity handling (`SECP256K1_N - d`), P2PK witness signature for ecash |
+| **[NUT-18](https://github.com/cashubtc/nuts/blob/main/18.md) / [NUT-26](https://github.com/cashubtc/nuts/blob/main/26.md)** | Cashu Payment Requests | ✅ | Standardized Bech32m `CREQB...` payment request generator for ecash donations |
 | **[WebLN](https://webln.guide/)** | Web Lightning Integration | ✅ | In-browser one-click payments on web landing page |
 
 ---

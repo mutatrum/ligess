@@ -49,6 +49,23 @@ describe('Landing Page Renderer', () => {
     assert.ok(html.includes('lightning:lnurl1bobtest'), 'Should contain lightning URI')
   })
 
+  it('should render Cashu tab and QR view when cashuRequest is supplied', () => {
+    const sampleCreq = 'creqb1testpaymentrequest123456789'
+    const html = renderLandingPage({
+      username: 'carol',
+      domain: 'example.com',
+      identifier: 'carol@example.com',
+      lnurlBech32: 'lnurl1test',
+      cashuRequest: sampleCreq
+    })
+
+    assert.ok(html.includes('id="tabCashu"'), 'Should render Cashu tab')
+    assert.ok(html.includes('id="viewCashu"'), 'Should render Cashu view')
+    assert.ok(html.includes(sampleCreq), 'Should include Cashu request string')
+    assert.ok(html.includes('cashu:' + sampleCreq), 'Should link to cashu: URI')
+    assert.ok(html.includes('id="btnCopyCashu"'), 'Should include Copy Cashu Request button')
+  })
+
   it('should generate self-contained inline SVG with crispEdges and no external image requests', () => {
     const html = renderLandingPage({
       username: 'alice',

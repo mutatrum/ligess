@@ -61,6 +61,20 @@ test('Router & HTTP Endpoints', async (t) => {
     assert.equal(body.names.satoshi, '4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff')
   })
 
+  await t.test('should include relays map in NIP-05 when configured', async () => {
+    process.env.LIGESS_NOSTR_RELAYS = 'wss://relay.damus.io, wss://nos.lol'
+    const res = await fastify.inject({
+      method: 'GET',
+      url: '/.well-known/nostr.json?name=satoshi'
+    })
+    assert.equal(res.statusCode, 200)
+    const body = res.json()
+    assert.ok(body.relays)
+    assert.ok(body.relays['4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff'])
+    assert.deepEqual(body.relays['4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff'], ['wss://relay.damus.io', 'wss://nos.lol'])
+    delete process.env.LIGESS_NOSTR_RELAYS
+  })
+
   await t.test('should return empty names object for unknown NIP-05 username', async () => {
     const res = await fastify.inject({
       method: 'GET',

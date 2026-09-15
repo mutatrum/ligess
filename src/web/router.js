@@ -153,11 +153,24 @@ function registerRoutes(fastify) {
     }
     const name = request.query.name
     if (!name || name === _username) {
-      return {
+      const response = {
         names: {
           [_username]: _nostrProfilePubKey
         }
       }
+
+      const configuredRelays = (process.env.LIGESS_NOSTR_RELAYS || process.env.LIGESS_NOSTR_WALLET_CONNECT_RELAY || '')
+        .split(/[\s,]+/)
+        .map(r => r.trim())
+        .filter(r => r.startsWith('ws://') || r.startsWith('wss://'))
+
+      if (configuredRelays.length > 0) {
+        response.relays = {
+          [_nostrProfilePubKey]: configuredRelays
+        }
+      }
+
+      return response
     }
     return { names: {} }
   })

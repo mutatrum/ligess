@@ -161,4 +161,120 @@ describe('Backend Drivers & Factory', () => {
     const cashu = createBackend('cashu', env)
     assert.ok(cashu instanceof CashuBackend)
   })
+
+  it('CLN driver should validate payKeysend params and format request', async () => {
+    const cln = new ClnBackend({ url: 'https://127.0.0.1:3010', rune: 'test_rune' })
+    await assert.rejects(async () => {
+      await cln.payKeysend({ pubkey: '02test' })
+    }, (err) => err.code === 'BAD_REQUEST')
+
+    let requestedMethod = ''
+    let requestedPath = ''
+    let requestedData = null
+    cln._request = async (method, path, data) => {
+      requestedMethod = method
+      requestedPath = path
+      requestedData = data
+      return {
+        payment_preimage: 'preimage_hex_123',
+        payment_hash: 'hash_hex_123',
+        amount_sent_msat: 1050,
+        amount_msat: 1000
+      }
+    }
+
+    const res = await cln.payKeysend({
+      pubkey: '02abc',
+      amountMsats: 1000,
+      tlvRecords: [{ type: 5482373484, value: 'feedbeef' }]
+    })
+
+    assert.strictEqual(requestedMethod, 'POST')
+    assert.strictEqual(requestedPath, '/v1/keysend')
+    assert.strictEqual(requestedData.destination, '02abc')
+    assert.strictEqual(requestedData.amount_msat, 1000)
+    assert.strictEqual(requestedData.extratlvs['5482373484'], 'feedbeef')
+    assert.strictEqual(res.paymentPreimage, 'preimage_hex_123')
+    assert.strictEqual(res.feesAmountMsats, 50)
+  })
+
+  it('CLN driver should normalize listTransactions from invoices and pays', async () => {
+    const cln = new ClnBackend({ url: 'https://127.0.0.1:3010', rune: 'test_rune' })
+    cln._request = async (method, path) => {
+      if (path === '/v1/invoice/listInvoices') {
+        return {
+          invoices: [
+            {
+              status: 'paid',
+              bolt11: 'lnbc1...',
+              payment_hash: 'hash1',
+              payment_preimage: 'pre1',
+              amount_msat: 2000,
+              paid_at: 1690000050,
+              expires_at: 1690003600
+            }
+          ]
+        }
+      }
+      if (path === '/v1/pay/listPays') {
+        return {
+          pays: [
+            {
+              status: 'complete',
+              bolt11: 'lnbc2...',
+              payment_hash: 'hash2',
+              preimage: 'pre2',
+              amount_msat: 5000,
+              amount_sent_msat: 5020,
+              created_at: 1690000100
+            }
+          ]
+        }
+      }
+      return {}
+    }
+
+    const txs = await cln.listTransactions({ limit: 10 })
+    assert.strictEqual(txs.length, 2)
+    assert.strictEqual(txs[0].type, 'outgoing')
+    assert.strictEqual(txs[0].amount, 5000)
+    assert.strictEqual(txs[0].fees_paid, 20)
+    assert.strictEqual(txs[1].type, 'incoming')
+    assert.strictEqual(txs[1].amount, 2000)
+  })
+
+  it('NWC driver should send pay_keysend and list_transactions commands', async () => {
+    const nwc = new NwcBackend({
+      uri: 'nostr+walletconnect://4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff?relay=wss://relay.damus.io&secret=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+    })
+
+    let sentMethod = ''
+    let sentParams = null
+    nwc._sendNwcCommand = async (method, params) => {
+      sentMethod = method
+      sentParams = params
+      if (method === 'pay_keysend') {
+        return { preimage: 'nwc_preimage', payment_hash: 'nwc_hash', fees_paid: 12 }
+      }
+      if (method === 'list_transactions') {
+        return { transactions: [{ type: 'incoming', amount: 500 }] }
+      }
+      return {}
+    }
+
+    const payRes = await nwc.payKeysend({ pubkey: '02pub', amountMsats: 3000, preimage: 'custom_pre' })
+    assert.strictEqual(sentMethod, 'pay_keysend')
+    assert.strictEqual(sentParams.pubkey, '02pub')
+    assert.strictEqual(sentParams.amount, 3000)
+    assert.strictEqual(sentParams.preimage, 'custom_pre')
+    assert.strictEqual(payRes.paymentPreimage, 'nwc_preimage')
+    assert.strictEqual(payRes.feesAmountMsats, 12)
+
+    const listRes = await nwc.listTransactions({ limit: 5 })
+    assert.strictEqual(sentMethod, 'list_transactions')
+    assert.strictEqual(sentParams.limit, 5)
+    assert.strictEqual(listRes.length, 1)
+    assert.strictEqual(listRes[0].amount, 500)
+  })
 })
+

@@ -2,7 +2,7 @@ require('./websocket')
 
 const fs = require('fs')
 const path = require('path')
-const { Mint, Wallet, getPubKeyFromPrivKey } = require('@cashu/cashu-ts')
+const { Mint, Wallet, PaymentRequest, getPubKeyFromPrivKey } = require('@cashu/cashu-ts')
 const { SimplePool, finalizeEvent, getPublicKey } = require('nostr-tools')
 const { parsePrivateKey, parsePublicKey } = require('./crypto')
 const { getLnClient } = require('../backends/factory')
@@ -169,6 +169,20 @@ async function processNutzapEvent(event, { autoMelt = true, getBackend = getLnCl
   const mint = new Mint(mintUrl)
   const wallet = new Wallet(mint)
 
+  // NUT-07 Token State Check: Verify proofs are not already spent
+  try {
+    if (typeof wallet.checkProofsStates === 'function') {
+      const states = await wallet.checkProofsStates(proofs)
+      const spentProofs = states.filter(s => s && s.state === 'SPENT')
+      if (spentProofs.length > 0) {
+        return { success: false, reason: 'Proofs are already spent on the mint (NUT-07)' }
+      }
+    }
+  } catch (err) {
+    // If mint does not support NUT-07 checkstate or network check fails, proceed
+    console.warn('NUT-07 proof state check warning:', err.message)
+  }
+
   // Sign P2PK proofs with recipient's private key (NUT-11)
   let signedProofs
   try {
@@ -282,6 +296,22 @@ function startNutzapService(env = process.env, getBackend = getLnClient) {
   }
 }
 
+/**
+ * Formats a Cashu Payment Request (NUT-18 / NUT-26)
+ * @param {Object} params
+ * @param {number} [params.amount] Satoshis
+ * @param {string[]} [params.mints] Mint URLs
+ * @param {string} [params.unit='sat']
+ * @param {string} [params.description]
+ * @param {Object} [env=process.env]
+ * @returns {string} Bech32m-encoded CREQB... string
+ */
+function formatCashuPaymentRequest({ amount, mints = [], unit = 'sat', description } = {}, env = process.env) {
+  const cleanMints = (mints && mints.length > 0 ? mints : getTrustedMints(env)).map(m => m.replace(/\/+$/, ''))
+  const pr = new PaymentRequest(undefined, undefined, amount ? BigInt(amount) : undefined, unit, cleanMints, description)
+  return pr.toEncodedCreqB()
+}
+
 module.exports = {
   isNutzapEnabled,
   getTrustedMints,
@@ -289,5 +319,6 @@ module.exports = {
   getP2PKKeys,
   buildNutzapInfoEvent,
   processNutzapEvent,
+  formatCashuPaymentRequest,
   startNutzapService
 }
