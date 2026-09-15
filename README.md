@@ -193,13 +193,43 @@ docker-compose up -d
 ```env
 LIGESS_LN_BACKEND=LND
 LIGESS_LND_REST=https://127.0.0.1:8080
-LIGESS_LND_MACAROON=02010... # Hex macaroon with invoices:read and invoices:write (and offchain:write for NWC)
+LIGESS_LND_MACAROON=02010... # Hex-encoded macaroon
 ```
 
-To bake an LND macaroon with minimal required permissions:
-```bash
-lncli bakemacaroon invoices:read invoices:write offchain:write
-```
+#### Baking LND Macaroons with Least Privilege
+
+> [!TIP]
+> Never use `admin.macaroon` in production. Always bake a customized macaroon with the minimum permissions required for your operational profile.
+
+Ligess supports two distinct security and operational situations:
+
+##### Situation 1: Receive-Only Mode (Lightning Address, Zaps & Nutzap Melt)
+Use this if you **only** want Ligess to receive payments (`username@domain.com`), process LNURL-pay, receive Nostr Zaps (NIP-57), and auto-melt incoming Cashu ecash into satoshis (NIP-61).
+* **Permissions Needed**: `invoices:read` and `invoices:write`
+* **Zero Spend Risk**: Because `offchain:write` is omitted, Ligess has **no cryptographic capability to spend, keysend, or route satoshis away from your node**. Even in the event of an arbitrary server or `.env` compromise, your node balance cannot be drained.
+* **Bake command**:
+  ```bash
+  # 1. Bake restricted receive-only macaroon
+  lncli bakemacaroon --save_to=ligess-receive.macaroon invoices:read invoices:write
+
+  # 2. Output hex string to paste into LIGESS_LND_MACAROON in .env
+  xxd -ps -u -c 1000 ligess-receive.macaroon
+  ```
+
+##### Situation 2: Full Mode with Nostr Wallet Connect (Outbound Spending & Remote Wallet)
+Use this if you want Ligess to also act as your personal **NIP-47 remote wallet server**, allowing mobile Nostr clients (such as Amethyst, Damus, Primal, or the Alby browser extension) to send zaps, execute keysends, and pay invoices directly from your node.
+* **Permissions Needed**: `invoices:read`, `invoices:write`, `offchain:write` (to execute outbound payments), and `info:read` (to query node alias/balance).
+* **Bake command**:
+  ```bash
+  # 1. Bake NWC-enabled macaroon
+  lncli bakemacaroon --save_to=ligess-nwc.macaroon invoices:read invoices:write offchain:write info:read
+
+  # 2. Output hex string to paste into LIGESS_LND_MACAROON in .env
+  xxd -ps -u -c 1000 ligess-nwc.macaroon
+  ```
+* **Essential Safeguards for Situation 2**:
+  * Set `LIGESS_NOSTR_WALLET_CONNECT_PUBLIC_KEY` in `.env` to restrict execution exclusively to your personal Nostr client pubkey.
+  * Define rolling budget caps (`LIGESS_NOSTR_WALLET_CONNECT_BUDGET_ZAP`, `LIGESS_NOSTR_WALLET_CONNECT_BUDGET_HOUR`, and `LIGESS_NOSTR_WALLET_CONNECT_BUDGET_DAY`) to prevent runaway spending.
 
 ### Core Lightning (CLN) Configuration
 ```env
