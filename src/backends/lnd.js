@@ -371,6 +371,127 @@ class LndBackend extends Backend {
       this.streamReq = null
     }
   }
+
+  inspectCredentials() {
+    return inspectMacaroon(this.hexMacaroon)
+  }
+
+  static inspectMacaroon(macaroonHex) {
+    return inspectMacaroon(macaroonHex)
+  }
 }
 
+function parseProtobufFields(buffer) {
+  let offset = 0
+  const fields = []
+  while (offset < buffer.length) {
+    const key = buffer[offset++]
+    const fieldNum = key >> 3
+    const wireType = key & 7
+    if (wireType === 0) {
+      let val = 0, shift = 0
+      while (true) {
+        if (offset >= buffer.length) break
+        const b = buffer[offset++]
+        val |= (b & 0x7f) << shift
+        if ((b & 0x80) === 0) break
+        shift += 7
+      }
+      fields.push({ fieldNum, wireType, val })
+    } else if (wireType === 2) {
+      let len = 0, shift = 0
+      while (true) {
+        if (offset >= buffer.length) break
+        const b = buffer[offset++]
+        len |= (b & 0x7f) << shift
+        if ((b & 0x80) === 0) break
+        shift += 7
+      }
+      if (offset + len > buffer.length) break
+      const data = buffer.slice(offset, offset + len)
+      offset += len
+      fields.push({ fieldNum, wireType, data })
+    } else {
+      break
+    }
+  }
+  return fields
+}
+
+function inspectMacaroon(macaroonHex) {
+  if (!macaroonHex || typeof macaroonHex !== 'string') return null
+  try {
+    const crypto = require('crypto')
+    const buf = Buffer.from(macaroonHex.trim(), 'hex')
+    if (buf.length < 10) return null
+
+    const fingerprint = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 8)
+    const version = buf[0]
+    let identifier = null
+
+    if (version === 2) {
+      let offset = 1
+      while (offset < buf.length) {
+        const type = buf[offset++]
+        if (type === 0) break
+        let len = 0, shift = 0
+        while (true) {
+          if (offset >= buf.length) break
+          const b = buf[offset++]
+          len |= (b & 0x7f) << shift
+          if ((b & 0x80) === 0) break
+          shift += 7
+        }
+        if (offset + len > buf.length) break
+        const data = buf.slice(offset, offset + len)
+        offset += len
+        if (type === 2) identifier = data
+      }
+    }
+
+    const permissions = []
+    if (identifier && identifier.length > 1) {
+      const protoBuf = identifier.slice(1)
+      const idFields = parseProtobufFields(protoBuf)
+      const ops = idFields.filter(f => f.fieldNum === 3)
+      for (const op of ops) {
+        const opFields = parseProtobufFields(op.data)
+        const entity = opFields.find(f => f.fieldNum === 1)?.data?.toString('utf8')
+        const actions = opFields.filter(f => f.fieldNum === 2).map(f => f.data.toString('utf8'))
+        if (entity) {
+          for (const act of actions) {
+            permissions.push(`${entity}:${act}`)
+          }
+        }
+      }
+    }
+
+    const hasOffchainWrite = permissions.includes('offchain:write')
+    const hasInvoices = permissions.some(p => p.startsWith('invoices:'))
+    const isAdmin = permissions.some(p => p.startsWith('macaroon:') || p.startsWith('signer:'))
+
+    let mode = 'Unknown'
+    if (isAdmin) {
+      mode = 'Admin (Full Access)'
+    } else if (hasOffchainWrite) {
+      mode = 'Full Mode (Inbound & Outbound NWC Spending)'
+    } else if (hasInvoices) {
+      mode = 'Receive-Only Mode (Zero Outbound Spend Capability)'
+    }
+
+    return {
+      fingerprint,
+      permissions,
+      hasOffchainWrite,
+      isAdmin,
+      mode,
+      byteLength: buf.length
+    }
+  } catch (_) {
+    return null
+  }
+}
+
+LndBackend.inspectMacaroon = inspectMacaroon
 module.exports = LndBackend
+module.exports.inspectMacaroon = inspectMacaroon

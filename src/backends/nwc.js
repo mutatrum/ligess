@@ -205,6 +205,14 @@ class NwcBackend extends Backend {
       }
     }, 4000)
   }
+
+  inspectCredentials() {
+    return {
+      type: 'Upstream NWC',
+      walletPubkey: this.walletPubkey,
+      relayUrl: this.relayUrl
+    }
+  }
 }
 
 module.exports = NwcBackend

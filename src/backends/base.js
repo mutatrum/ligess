@@ -103,6 +103,14 @@ class Backend extends EventEmitter {
       this.watchInterval = null
     }
   }
+
+  /**
+   * Inspect backend credentials and return security status information
+   * @returns {{ fingerprint?: string, mode?: string, permissions?: string[], warning?: string, details?: string } | null}
+   */
+  inspectCredentials() {
+    return null
+  }
 }
 
 module.exports = Backend

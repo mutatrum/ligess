@@ -274,6 +274,36 @@ class ClnBackend extends Backend {
       }
     }, 4000)
   }
+
+  inspectCredentials() {
+    if (this.rune) {
+      return inspectRune(this.rune)
+    }
+    if (this.hexMacaroon) {
+      const { inspectMacaroon } = require('./lnd')
+      return inspectMacaroon(this.hexMacaroon)
+    }
+    return null
+  }
+
+  static inspectRune(rune) {
+    return inspectRune(rune)
+  }
 }
 
+function inspectRune(rune) {
+  if (!rune || typeof rune !== 'string') return null
+  try {
+    const buf = Buffer.from(rune.trim(), 'base64')
+    const str = buf.toString('latin1')
+    const restrictions = str.match(/[a-zA-Z0-9_]+[=<>!~][^&|]*/g) || []
+    const isMaster = restrictions.length === 0
+    return { restrictions, isMaster }
+  } catch (_) {
+    return null
+  }
+}
+
+ClnBackend.inspectRune = inspectRune
 module.exports = ClnBackend
+module.exports.inspectRune = inspectRune

@@ -180,6 +180,16 @@ class LnbitsBackend extends Backend {
       }
     }, 4000)
   }
+
+  inspectCredentials() {
+    const crypto = require('crypto')
+    const fp = crypto.createHash('sha256').update(this.apiKey || '').digest('hex').slice(0, 8)
+    return {
+      type: 'LNbits API Key',
+      fingerprint: fp,
+      domain: this.baseUrl
+    }
+  }
 }
 
 module.exports = LnbitsBackend
