@@ -70,12 +70,25 @@ const startup = (env = process.env) => {
   const backend = (env.LIGESS_LN_BACKEND || "").toLowerCase().trim()
 
   switch (backend) {
-    case "lnd":
+    case "lnd": {
       checkKeys(["LIGESS_LND_REST", "LIGESS_LND_MACAROON"], env)
       if (!env.LIGESS_LND_REST.startsWith("https:") && !env.LIGESS_LND_REST.startsWith("http:")) {
         console.warn("Warning: LIGESS_LND_REST should start with http: or https:")
       }
+      const lndInfo = inspectLndMacaroon(env.LIGESS_LND_MACAROON)
+      if (lndInfo) {
+        if (lndInfo.isAdmin) {
+          console.warn(`\x1b[33m⚠ [LND Macaroon]\x1b[0m Admin permissions detected [fp: ${lndInfo.fingerprint}, ${lndInfo.permissions.length} perms]. Consider baking a restricted macaroon per README.`)
+        } else if (lndInfo.hasOffchainWrite) {
+          console.log(`\x1b[36m⚡ [LND Macaroon]\x1b[0m Full / NWC Spending Mode [fp: ${lndInfo.fingerprint}, permissions: ${lndInfo.permissions.join(', ')}]`)
+        } else if (lndInfo.permissions.length > 0) {
+          console.log(`\x1b[32m🔒 [LND Macaroon]\x1b[0m Receive-Only Mode [fp: ${lndInfo.fingerprint}, permissions: ${lndInfo.permissions.join(', ')}]`)
+        } else {
+          console.log(`\x1b[36m⚡ [LND Macaroon]\x1b[0m Macaroon loaded [fp: ${lndInfo.fingerprint}, length: ${lndInfo.byteLength} bytes]`)
+        }
+      }
       break
+    }
 
     case "eclair":
       checkKeys(["LIGESS_ECLAIR_REST", "LIGESS_ECLAIR_PASSWORD"], env)
@@ -85,13 +98,29 @@ const startup = (env = process.env) => {
       checkKeys(["LIGESS_LNBITS_DOMAIN", "LIGESS_LNBITS_API_KEY"], env)
       break
 
-    case "cln":
+    case "cln": {
       checkKeys(["LIGESS_CLN_REST"], env)
       if (!env.LIGESS_CLN_MACAROON && !env.LIGESS_CLN_RUNE) {
         console.error("Either LIGESS_CLN_MACAROON or LIGESS_CLN_RUNE must be defined for CLN backend")
         process.exit(1)
       }
+      if (env.LIGESS_CLN_RUNE) {
+        const runeInfo = inspectClnRune(env.LIGESS_CLN_RUNE)
+        if (runeInfo) {
+          if (runeInfo.isMaster) {
+            console.warn(`\x1b[33m⚠ [CLN Rune]\x1b[0m Master rune without restrictions detected. Consider restricting rune per README.`)
+          } else {
+            console.log(`\x1b[32m🔒 [CLN Rune]\x1b[0m Restricted rune active [${runeInfo.restrictions.join(', ')}]`)
+          }
+        }
+      } else if (env.LIGESS_CLN_MACAROON) {
+        const clnMacInfo = inspectLndMacaroon(env.LIGESS_CLN_MACAROON)
+        if (clnMacInfo) {
+          console.log(`\x1b[36m⚡ [CLN Macaroon]\x1b[0m Macaroon loaded [fp: ${clnMacInfo.fingerprint}]`)
+        }
+      }
       break
+    }
 
     case "phoenixd":
       checkKeys(["LIGESS_PHOENIXD_PASSWORD"], env)
@@ -132,4 +161,134 @@ const checkKeys = (keys, env = process.env) => {
   }
 }
 
-module.exports = { startup, checkLegacyFiles, checkBip353OnStartup }
+function parseProtobufFields(buffer) {
+  let offset = 0
+  const fields = []
+  while (offset < buffer.length) {
+    const key = buffer[offset++]
+    const fieldNum = key >> 3
+    const wireType = key & 7
+    if (wireType === 0) {
+      let val = 0, shift = 0
+      while (true) {
+        if (offset >= buffer.length) break
+        const b = buffer[offset++]
+        val |= (b & 0x7f) << shift
+        if ((b & 0x80) === 0) break
+        shift += 7
+      }
+      fields.push({ fieldNum, wireType, val })
+    } else if (wireType === 2) {
+      let len = 0, shift = 0
+      while (true) {
+        if (offset >= buffer.length) break
+        const b = buffer[offset++]
+        len |= (b & 0x7f) << shift
+        if ((b & 0x80) === 0) break
+        shift += 7
+      }
+      if (offset + len > buffer.length) break
+      const data = buffer.slice(offset, offset + len)
+      offset += len
+      fields.push({ fieldNum, wireType, data })
+    } else {
+      break
+    }
+  }
+  return fields
+}
+
+function inspectLndMacaroon(macaroonHex) {
+  if (!macaroonHex || typeof macaroonHex !== 'string') return null
+  try {
+    const crypto = require('crypto')
+    const buf = Buffer.from(macaroonHex.trim(), 'hex')
+    if (buf.length < 10) return null
+
+    const fingerprint = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 8)
+    const version = buf[0]
+    let identifier = null
+
+    if (version === 2) {
+      let offset = 1
+      while (offset < buf.length) {
+        const type = buf[offset++]
+        if (type === 0) break
+        let len = 0, shift = 0
+        while (true) {
+          if (offset >= buf.length) break
+          const b = buf[offset++]
+          len |= (b & 0x7f) << shift
+          if ((b & 0x80) === 0) break
+          shift += 7
+        }
+        if (offset + len > buf.length) break
+        const data = buf.slice(offset, offset + len)
+        offset += len
+        if (type === 2) identifier = data
+      }
+    }
+
+    const permissions = []
+    if (identifier && identifier.length > 1) {
+      const protoBuf = identifier.slice(1)
+      const idFields = parseProtobufFields(protoBuf)
+      const ops = idFields.filter(f => f.fieldNum === 3)
+      for (const op of ops) {
+        const opFields = parseProtobufFields(op.data)
+        const entity = opFields.find(f => f.fieldNum === 1)?.data?.toString('utf8')
+        const actions = opFields.filter(f => f.fieldNum === 2).map(f => f.data.toString('utf8'))
+        if (entity) {
+          for (const act of actions) {
+            permissions.push(`${entity}:${act}`)
+          }
+        }
+      }
+    }
+
+    const hasOffchainWrite = permissions.includes('offchain:write')
+    const hasInvoices = permissions.some(p => p.startsWith('invoices:'))
+    const isAdmin = permissions.some(p => p.startsWith('macaroon:') || p.startsWith('signer:'))
+
+    let mode = 'Unknown'
+    if (isAdmin) {
+      mode = 'Admin (Full Access)'
+    } else if (hasOffchainWrite) {
+      mode = 'Full Mode (Inbound & Outbound NWC Spending)'
+    } else if (hasInvoices) {
+      mode = 'Receive-Only Mode (Zero Outbound Spend Capability)'
+    }
+
+    return {
+      fingerprint,
+      permissions,
+      hasOffchainWrite,
+      isAdmin,
+      mode,
+      byteLength: buf.length
+    }
+  } catch (_) {
+    return null
+  }
+}
+
+function inspectClnRune(rune) {
+  if (!rune || typeof rune !== 'string') return null
+  try {
+    const buf = Buffer.from(rune.trim(), 'base64')
+    const str = buf.toString('latin1')
+    const restrictions = str.match(/[a-zA-Z0-9_]+[=<>!~][^&|]*/g) || []
+    const isMaster = restrictions.length === 0
+    return { restrictions, isMaster }
+  } catch (_) {
+    return null
+  }
+}
+
+module.exports = {
+  startup,
+  checkLegacyFiles,
+  checkBip353OnStartup,
+  inspectLndMacaroon,
+  inspectClnRune
+}

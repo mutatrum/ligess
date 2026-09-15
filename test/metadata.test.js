@@ -5,7 +5,7 @@ const path = require("path")
 const os = require("os")
 const { getProfileMetadata, getMetadataNote } = require("../src/nostr/metadata")
 const { getRelayInformation } = require("../src/nostr/nwcServer")
-const { checkLegacyFiles } = require("../src/config/startup")
+const { checkLegacyFiles, inspectLndMacaroon, inspectClnRune } = require("../src/config/startup")
 
 describe("Dynamic Profile Metadata & Relay Information", () => {
   it("should generate default profile metadata from username and domain", () => {
@@ -136,5 +136,40 @@ describe("Dynamic Profile Metadata & Relay Information", () => {
     assert.ok(warnings2[1].includes("relayInformation.json"))
 
     fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  it("should inspect and decode LND macaroon permissions and operational mode", () => {
+    // Hex of real invoice macaroon with [address:read, address:write, invoices:read, invoices:write, onchain:read]
+    const invoiceHex = "0201036c6e640258030a10d9d6c72ba559972cd380a82056a89b8e1201301a160a0761646472657373120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a0f0a076f6e636861696e12047265616400000620976dc8456c289dc20ee8de3e3f972b23e64bb639bc65d79734dbfca295fd32f5"
+    const parsed = inspectLndMacaroon(invoiceHex)
+
+    assert.ok(parsed)
+    assert.strictEqual(parsed.fingerprint.length, 8)
+    assert.strictEqual(parsed.hasOffchainWrite, false)
+    assert.strictEqual(parsed.isAdmin, false)
+    assert.ok(parsed.mode.includes("Receive-Only"))
+    assert.ok(parsed.permissions.includes("invoices:read"))
+    assert.ok(parsed.permissions.includes("invoices:write"))
+  })
+
+  it("should inspect and decode CLN rune restrictions", () => {
+    // Base64 of 'method=invoice&method=waitanyinvoice'
+    const restrictedRune = "bWV0aG9kPWludm9pY2UmbWV0aG9kPXdhaXRhbnlpbnZvaWNl"
+    const res = inspectClnRune(restrictedRune)
+
+    assert.ok(res)
+    assert.strictEqual(res.isMaster, false)
+    assert.ok(res.restrictions.includes("method=invoice"))
+    assert.ok(res.restrictions.includes("method=waitanyinvoice"))
+
+    const masterRune = Buffer.from("random_binary_without_ampersands").toString("base64")
+    const masterRes = inspectClnRune(masterRune)
+    assert.strictEqual(masterRes.isMaster, true)
+  })
+
+  it("should return null for invalid macaroon or rune strings", () => {
+    assert.strictEqual(inspectLndMacaroon(""), null)
+    assert.strictEqual(inspectLndMacaroon("invalid_hex"), null)
+    assert.strictEqual(inspectClnRune(""), null)
   })
 })
