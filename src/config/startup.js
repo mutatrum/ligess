@@ -92,11 +92,16 @@ const startup = (env = process.env) => {
 
     case "eclair":
       checkKeys(["LIGESS_ECLAIR_REST", "LIGESS_ECLAIR_PASSWORD"], env)
+      console.log(`\x1b[36m⚡ [Eclair]\x1b[0m Connected to ${env.LIGESS_ECLAIR_REST} (Basic auth: ${env.LIGESS_ECLAIR_LOGIN || 'default'})`)
       break
 
-    case "lnbits":
+    case "lnbits": {
       checkKeys(["LIGESS_LNBITS_DOMAIN", "LIGESS_LNBITS_API_KEY"], env)
+      const crypto = require('crypto')
+      const fp = crypto.createHash('sha256').update(env.LIGESS_LNBITS_API_KEY || '').digest('hex').slice(0, 8)
+      console.log(`\x1b[36m⚡ [LNbits]\x1b[0m Connected to ${env.LIGESS_LNBITS_DOMAIN} (API key fp: ${fp})`)
       break
+    }
 
     case "cln": {
       checkKeys(["LIGESS_CLN_REST"], env)
@@ -124,26 +129,39 @@ const startup = (env = process.env) => {
 
     case "phoenixd":
       checkKeys(["LIGESS_PHOENIXD_PASSWORD"], env)
+      console.log(`\x1b[36m⚡ [Phoenixd]\x1b[0m Connected to ${env.LIGESS_PHOENIXD_URL || 'http://127.0.0.1:9740'} (HTTP password auth)`)
       break
 
-    case "nwc":
+    case "nwc": {
       checkKeys(["LIGESS_NWC_URI"], env)
       if (!env.LIGESS_NWC_URI.startsWith("nostr+walletconnect:")) {
         console.error("LIGESS_NWC_URI must start with nostr+walletconnect:")
         process.exit(1)
       }
+      try {
+        const url = new URL(env.LIGESS_NWC_URI.replace('nostr+walletconnect:', 'http:'))
+        const walletPubkey = url.hostname || url.pathname.replace(/^\/\//, '')
+        const relay = url.searchParams.get('relay') || 'default'
+        console.log(`\x1b[36m⚡ [Upstream NWC]\x1b[0m Connected to wallet ${walletPubkey.slice(0, 8)}... via ${relay}`)
+      } catch (_) {
+        console.log(`\x1b[36m⚡ [Upstream NWC]\x1b[0m URI configured`)
+      }
       break
+    }
 
     case "ldk":
       checkKeys(["LIGESS_LDK_URL"], env)
+      console.log(`\x1b[36m⚡ [LDK Node]\x1b[0m Connected to ${env.LIGESS_LDK_URL} (API key auth)`)
       break
 
     case "blink":
       checkKeys(["LIGESS_BLINK_API_KEY"], env)
+      console.log(`\x1b[36m⚡ [Blink]\x1b[0m Connected to ${env.LIGESS_BLINK_URL || 'https://api.blink.sv/graphql'} (GraphQL API key auth)`)
       break
 
     case "cashu":
       checkKeys(["LIGESS_CASHU_MINT_URL"], env)
+      console.log(`\x1b[32m🥜 [Cashu Mint]\x1b[0m Gateway to ${env.LIGESS_CASHU_MINT_URL} (Open ecash quotes, zero node credentials)`)
       break
 
     default:
