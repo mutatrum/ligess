@@ -94,7 +94,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .container {
       width: 100%;
-      max-width: 560px;
+      max-width: 620px;
       margin: auto;
     }
 
@@ -104,7 +104,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--card-border);
       border-radius: var(--card-radius);
-      padding: 40px 28px;
+      padding: 44px 36px;
       box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.7), 0 0 50px rgba(139, 92, 246, 0.12);
       position: relative;
       overflow: hidden;
@@ -113,26 +113,26 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .card::before {
       content: "";
       position: absolute;
-      top: -140px;
+      top: -180px;
       left: 50%;
       transform: translateX(-50%);
-      width: 280px;
-      height: 280px;
+      width: 360px;
+      height: 360px;
       background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, transparent 70%);
       pointer-events: none;
     }
 
     .profile-header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       position: relative;
     }
 
     .avatar {
-      width: 104px;
-      height: 104px;
+      width: 112px;
+      height: 112px;
       border-radius: 50%;
-      margin: 0 auto 18px;
+      margin: 0 auto 20px;
       object-fit: cover;
       border: 3px solid rgba(245, 158, 11, 0.35);
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
@@ -140,16 +140,16 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 38px;
+      font-size: 42px;
       font-weight: 700;
       color: #fff;
     }
 
     .display-name {
-      font-size: 28px;
+      font-size: 32px;
       font-weight: 800;
       letter-spacing: -0.025em;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .badge-handle {
@@ -159,11 +159,11 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       background: rgba(245, 158, 11, 0.12);
       border: 1px solid rgba(245, 158, 11, 0.3);
       color: #fbbf24;
-      padding: 8px 18px;
+      padding: 9px 20px;
       border-radius: 999px;
-      font-size: 15.5px;
+      font-size: 17.5px;
       font-weight: 600;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
       cursor: pointer;
       transition: var(--transition);
       user-select: none;
@@ -176,9 +176,9 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .about {
       color: var(--text-muted);
-      font-size: 15.5px;
-      line-height: 1.6;
-      max-width: 440px;
+      font-size: 17.5px;
+      line-height: 1.65;
+      max-width: 500px;
       margin: 0 auto;
     }
 
@@ -187,11 +187,11 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       display: flex;
       flex-wrap: nowrap;
       justify-content: center;
-      gap: 6px;
-      margin: 20px auto 16px;
+      gap: 8px;
+      margin: 24px auto 20px;
       background: rgba(255, 255, 255, 0.04);
-      padding: 4px;
-      border-radius: 14px;
+      padding: 5px;
+      border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.07);
       width: fit-content;
       max-width: 100%;
@@ -201,15 +201,15 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 8px 13px;
-      border-radius: 10px;
-      font-size: 13px;
+      padding: 9px 16px;
+      border-radius: 12px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: var(--transition);
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
 
     .tab-btn:hover {
@@ -225,22 +225,22 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     /* Self-Contained QR Container */
     .qr-view {
       text-align: center;
-      margin: 16px auto 20px;
+      margin: 20px auto 24px;
     }
 
     .qr-container {
       background: #ffffff;
-      border-radius: 20px;
-      padding: 18px;
-      margin: 0 auto 16px;
-      width: 320px;
-      height: 320px;
+      border-radius: 24px;
+      padding: 24px;
+      margin: 0 auto 20px;
+      width: 500px;
+      height: 500px;
       max-width: 100%;
       aspect-ratio: 1 / 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
       transition: var(--transition);
       overflow: hidden;
     }
@@ -259,7 +259,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     .qr-caption {
-      font-size: 14px;
+      font-size: 16px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
@@ -270,13 +270,13 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .qr-caption span {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 5px 14px;
+      padding: 6px 16px;
       border-radius: 999px;
     }
 
     .offer-details {
-      margin-top: 14px;
-      font-size: 13px;
+      margin-top: 16px;
+      font-size: 15px;
       color: var(--text-muted);
       text-align: center;
     }
@@ -296,10 +296,10 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .offer-details code {
       display: block;
       word-break: break-all;
-      padding: 10px 14px;
+      padding: 12px 16px;
       background: rgba(255, 255, 255, 0.04);
       border-radius: 10px;
-      font-size: 11.5px;
+      font-size: 13.5px;
       font-family: monospace;
       user-select: all;
       border: 1px solid rgba(255, 255, 255, 0.06);
@@ -310,17 +310,17 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .amount-presets {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-top: 20px;
+      gap: 12px;
+      margin-top: 24px;
     }
 
     .preset-btn {
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.06);
       color: var(--text-muted);
-      border-radius: 12px;
-      padding: 11px 8px;
-      font-size: 14.5px;
+      border-radius: 14px;
+      padding: 13px 10px;
+      font-size: 16.5px;
       font-weight: 600;
       cursor: pointer;
       transition: var(--transition);
@@ -336,15 +336,15 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .actions {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-top: 22px;
+      gap: 14px;
+      margin-top: 24px;
     }
 
     .btn {
       width: 100%;
-      padding: 16px 24px;
-      border-radius: 16px;
-      font-size: 16px;
+      padding: 18px 28px;
+      border-radius: 18px;
+      font-size: 18px;
       font-weight: 650;
       letter-spacing: -0.01em;
       display: flex;
@@ -387,9 +387,9 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       transform: translateX(-50%) translateY(100px);
       background: #10b981;
       color: #fff;
-      padding: 12px 24px;
+      padding: 14px 28px;
       border-radius: 999px;
-      font-size: 15px;
+      font-size: 17px;
       font-weight: 600;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -403,8 +403,8 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .footer {
       text-align: center;
-      margin-top: 28px;
-      font-size: 13.5px;
+      margin-top: 32px;
+      font-size: 15px;
       color: #6b7280;
     }
 
@@ -414,7 +414,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     /* Mobile Responsive Optimizations */
-    @media (max-width: 480px) {
+    @media (max-width: 580px) {
       body {
         padding: 16px 12px;
       }
@@ -428,15 +428,18 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         width: 92px;
         height: 92px;
         font-size: 34px;
+        margin: 0 auto 16px;
       }
 
       .display-name {
         font-size: 24px;
+        margin-bottom: 8px;
       }
 
       .badge-handle {
         font-size: 14px;
         padding: 6px 14px;
+        margin-bottom: 12px;
       }
 
       .about {
@@ -444,8 +447,10 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       }
 
       .tabs {
+        flex-wrap: wrap;
         gap: 6px;
         padding: 4px;
+        margin: 16px auto 14px;
       }
 
       .tab-btn {
@@ -453,25 +458,59 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         font-size: 13px;
       }
 
+      .qr-view {
+        margin: 14px auto 18px;
+      }
+
       .qr-container {
-        width: min(280px, 80vw);
-        height: min(280px, 80vw);
-        padding: 14px;
+        width: min(320px, 82vw);
+        height: min(320px, 82vw);
+        padding: 16px;
         border-radius: 18px;
+        margin: 0 auto 14px;
+      }
+
+      .qr-caption {
+        font-size: 13.5px;
+      }
+
+      .offer-details {
+        font-size: 13px;
+      }
+
+      .offer-details code {
+        font-size: 11.5px;
+        padding: 10px 12px;
       }
 
       .amount-presets {
         gap: 6px;
+        margin-top: 16px;
       }
 
       .preset-btn {
         padding: 10px 4px;
-        font-size: 13px;
+        font-size: 13.5px;
+      }
+
+      .actions {
+        gap: 10px;
+        margin-top: 18px;
       }
 
       .btn {
         padding: 14px 18px;
-        font-size: 15px;
+        font-size: 15.5px;
+      }
+
+      .toast {
+        font-size: 14px;
+        padding: 10px 20px;
+      }
+
+      .footer {
+        font-size: 13px;
+        margin-top: 22px;
       }
     }
   </style>
