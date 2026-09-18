@@ -68,7 +68,7 @@ test('LUD Specifications (17, 18, 20, 21)', async (t) => {
     })
     assert.equal(res.statusCode, 200)
     assert.ok(res.payload.includes('lnurlp://pay.alice.me/.well-known/lnurlp/alice'))
-    assert.ok(res.payload.includes('LUD-17 scheme:'))
+    assert.ok(res.payload.includes('rel="lightning"'))
   })
 
   // ---------------------------------------------------------------------------

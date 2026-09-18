@@ -56,6 +56,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${displayName} | Lightning & Nostr Portal</title>
   <meta name="description" content="Pay ${displayName} instantly over the Lightning Network or Nostr Zaps.">
+  <link rel="lightning" href="${safeLnurlpUrl}">
   ${picture ? `  <link rel="icon" href="${picture}">
   <link rel="apple-touch-icon" href="${picture}">` : `  <link rel="icon" type="image/svg+xml" href="${DEFAULT_FAVICON_DATA_URI}">
   <link rel="alternate icon" href="/favicon.ico">`}
@@ -441,12 +442,6 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         <div class="qr-caption">
           <span>Scan with any Lightning or BIP-353 wallet</span>
         </div>
-        <details class="offer-details">
-          <summary>View raw LNURL scheme</summary>
-          <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
-            <span>LUD-17 scheme: </span><a href="${safeLnurlpUrl}" style="color:#fbbf24;word-break:break-all;">${safeLnurlpUrl}</a>
-          </div>
-        </details>
       </div>
 
       ${safeBolt12 ? `
