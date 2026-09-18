@@ -53,7 +53,7 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
   - Outbound BOLT12 payment via NWC (`pay_offer`) routed through [LNDK](https://github.com/lndk-org/lndk).
   - Built-in BIP-353 DNS TXT record generator (`npm run bip353` or `node bin/bip353.js`) for human-readable Bitcoin addresses (`username@domain.com`).
 - 🎨 **Modern Web Landing Page & WebLN**:
-  - Interactive glassmorphic dark-mode web portal at `https://YOURDOMAIN.COM/`.
+  - Interactive glassmorphic dark-mode web portal at `https://YOURDOMAIN.COM/`. See [pay.mutatrum.com](https://pay.mutatrum.com/)
   - **WebLN One-Click Pay**: Instant payments with browser extensions (Alby, Zeus).
   - Multi-protocol tabs with real-time switching between **Lightning Address & BIP-353**, **BOLT12 Offers**, and **Cashu Ecash (`CREQB...`)**.
   - Interactive sat preset buttons (21, 100, 1000, 5000), copy actions, and streamlined Alphanumeric QR codes.
@@ -565,4 +565,4 @@ Tests cover:
 MIT License.
 Original project created by [dolu89](https://github.com/dolu89/ligess).
 Nostr extensions and modernization by [mutatrum](https://git.mutatrum.com/).
-Tips and zaps welcome at `mutatrum@hodl.camp`.
+Tips and zaps welcome at [tip.mutatrum.com](https://tip.mutatrum.com/).
