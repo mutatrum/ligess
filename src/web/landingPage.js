@@ -556,7 +556,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         </details>
       </div>` : ""}
 
-      <div class="amount-presets">
+      <div class="amount-presets" id="amountPresets" style="display: none;">
         <button class="preset-btn active" onclick="selectAmount(21)">21 sats</button>
         <button class="preset-btn" onclick="selectAmount(100)">100</button>
         <button class="preset-btn" onclick="selectAmount(1000)">1,000</button>
@@ -564,7 +564,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       </div>
 
       <div class="actions">
-        <button class="btn btn-webln" id="weblnBtn" onclick="payWithWebLN()">
+        <button class="btn btn-webln" id="weblnBtn" style="display: none;" onclick="payWithWebLN()">
           <span>Send <span id="btnAmountText">21</span> sats via WebLN</span>
         </button>
         <button class="btn btn-secondary" id="btnCopyAddress" onclick="copyAddress()">
@@ -594,6 +594,8 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
   <script>
     let currentSats = 21;
+    let hasWebLN = false;
+    let currentProtocol = "lightning";
     const identifier = "${safeIdentifier}";
     const bolt12Offer = "${safeBolt12 || ""}";
     const silentPayment = "${safeSilentPayment || ""}";
@@ -643,7 +645,32 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       document.getElementById("btnAmountText").textContent = sats.toLocaleString();
     }
 
+    function updateWebLNVisibility() {
+      const isLightningTab = currentProtocol === "lightning";
+      const btnWebln = document.getElementById("weblnBtn");
+      const presets = document.getElementById("amountPresets");
+      if (btnWebln) btnWebln.style.display = (hasWebLN && isLightningTab) ? "flex" : "none";
+      if (presets) presets.style.display = (hasWebLN && isLightningTab) ? "grid" : "none";
+    }
+
+    function detectWebLN() {
+      if (typeof window !== "undefined" && window.webln) {
+        hasWebLN = true;
+        updateWebLNVisibility();
+      }
+    }
+
+    detectWebLN();
+    window.addEventListener("webln:ready", () => {
+      hasWebLN = true;
+      updateWebLNVisibility();
+    });
+    window.addEventListener("load", detectWebLN);
+    setTimeout(detectWebLN, 300);
+    setTimeout(detectWebLN, 1000);
+
     function switchProtocol(type) {
+      currentProtocol = type;
       const isLightning = type === "lightning";
       const isBolt12 = type === "bolt12";
       const isSilent = type === "silent";
@@ -667,10 +694,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       const viewC = document.getElementById("viewCashu");
       if (viewC) viewC.style.display = isCashu ? "block" : "none";
 
-      const btnWebln = document.getElementById("weblnBtn");
-      if (btnWebln) btnWebln.style.display = isLightning ? "flex" : "none";
-      const presets = document.querySelector(".amount-presets");
-      if (presets) presets.style.display = isLightning ? "grid" : "none";
+      updateWebLNVisibility();
 
       const btnCopyAddr = document.getElementById("btnCopyAddress");
       if (btnCopyAddr) btnCopyAddr.style.display = isLightning ? "flex" : "none";
