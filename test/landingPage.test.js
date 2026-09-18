@@ -40,13 +40,28 @@ describe('Landing Page Renderer', () => {
       username: 'bob',
       domain: 'example.com',
       identifier: 'bob@example.com',
-      lnurlBech32: 'lnurl1bobtest',
       bolt12Offer: null
     })
 
     assert.ok(!html.includes('id="tabBolt12"'), 'Should not show BOLT12 tab')
     assert.ok(!html.includes('id="viewBolt12"'), 'Should not show BOLT12 view')
-    assert.ok(html.includes('lightning:lnurl1bobtest'), 'Should contain lightning URI')
+    assert.ok(html.includes('lightning:bob@example.com'), 'Should contain lightning URI')
+  })
+
+  it('should render Silent Payment tab and QR view when silentPayment is supplied', () => {
+    const sp = 'sp1qqvgjq70ws23xxn893x06ldtkhlhk2zqypy3u0lc0c3qdx9n9ww5yuq38qfzq7um9wmg3csjlzuthwvxlhkzk0z3ndxvmh6m4szd7yknnpqlh7sam'
+    const html = renderLandingPage({
+      username: 'david',
+      domain: 'example.com',
+      identifier: 'david@example.com',
+      silentPayment: sp
+    })
+
+    assert.ok(html.includes('id="tabSilent"'), 'Should render Silent Payment tab')
+    assert.ok(html.includes('id="viewSilent"'), 'Should render Silent Payment view')
+    assert.ok(html.includes(sp), 'Should include Silent Payment address string')
+    assert.ok(html.includes('bitcoin:' + sp), 'Should link to bitcoin: URI')
+    assert.ok(html.includes('id="btnCopySilent"'), 'Should include Copy Silent Payment button')
   })
 
   it('should render Cashu tab and QR view when cashuRequest is supplied', () => {
@@ -55,7 +70,6 @@ describe('Landing Page Renderer', () => {
       username: 'carol',
       domain: 'example.com',
       identifier: 'carol@example.com',
-      lnurlBech32: 'lnurl1test',
       cashuRequest: sampleCreq
     })
 

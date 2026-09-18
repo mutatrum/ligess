@@ -41,9 +41,9 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   const lightningAddressUri = "lightning:" + safeIdentifier
   const lightningAddressSvg = generateQrSvg(lightningAddressUri)
 
-  // Legacy LNURL Bech32 URI for older wallets (optimized with Alphanumeric mode)
-  const legacyLnurlUri = "lightning:" + encodeURIComponent(lnurlBech32)
-  const legacyLnurlSvg = generateQrSvg(legacyLnurlUri)
+  // Dedicated Silent Payment URI if configured (BIP-352 on-chain stealth address)
+  const silentPaymentUri = safeSilentPayment ? ("bitcoin:" + safeSilentPayment) : null
+  const silentPaymentSvg = safeSilentPayment ? generateQrSvg(silentPaymentUri) : null
 
   // Dedicated BOLT12 URI if offer is configured (optimized with Alphanumeric mode)
   const bolt12Uri = safeBolt12 ? ("lightning:" + encodeURIComponent(bolt12Offer)) : null
@@ -424,11 +424,12 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
         <p class="about">${about}</p>
       </div>
 
-      ${(safeBolt12 || safeCashu) ? `
+      ${(safeBolt12 || safeSilentPayment || safeCashu) ? `
       <div class="tabs">
-        <button class="tab-btn active" id="tabLightning" onclick="switchProtocol('lightning')">⚡ Lightning Address</button>
-        ${safeBolt12 ? `<button class="tab-btn" id="tabBolt12" onclick="switchProtocol('bolt12')">📜 BOLT12 Offer</button>` : ""}
-        ${safeCashu ? `<button class="tab-btn" id="tabCashu" onclick="switchProtocol('cashu')">🥜 Cashu Ecash</button>` : ""}
+        <button class="tab-btn active" id="tabLightning" onclick="switchProtocol('lightning')">Lightning Address</button>
+        ${safeBolt12 ? `<button class="tab-btn" id="tabBolt12" onclick="switchProtocol('bolt12')">BOLT12 Offer</button>` : ""}
+        ${safeSilentPayment ? `<button class="tab-btn" id="tabSilent" onclick="switchProtocol('silent')">Silent Payment</button>` : ""}
+        ${safeCashu ? `<button class="tab-btn" id="tabCashu" onclick="switchProtocol('cashu')">Cashu Ecash</button>` : ""}
       </div>` : ""}
 
       <div id="viewLightning" class="qr-view">
@@ -438,21 +439,12 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
           </a>
         </div>
         <div class="qr-caption">
-          <span>⚡ Scan with any Lightning or BIP-353 wallet</span>
+          <span>Scan with any Lightning or BIP-353 wallet</span>
         </div>
         <details class="offer-details">
-          <summary>Need LNURL, BIP-352 or Bech32 links?</summary>
-          <div style="margin-top:12px;text-align:center;">
-            <div style="width:180px;height:180px;margin:0 auto;">${legacyLnurlSvg}</div>
-            <code style="display:block;margin-top:8px;word-break:break-all;font-size:11px;">${legacyLnurlUri}</code>
-            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
-              <span>LUD-17 scheme: </span><a href="${safeLnurlpUrl}" style="color:#fbbf24;word-break:break-all;">${safeLnurlpUrl}</a>
-            </div>
-            ${safeSilentPayment ? `
-            <div style="margin-top:10px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;text-align:left;">
-              <span style="color:#a78bfa;font-weight:600;font-size:11px;">🔒 BIP-352 Silent Payment Address:</span>
-              <code style="display:block;margin-top:4px;word-break:break-all;font-size:10px;color:var(--text-muted);">${safeSilentPayment}</code>
-            </div>` : ""}
+          <summary>View raw LNURL scheme</summary>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
+            <span>LUD-17 scheme: </span><a href="${safeLnurlpUrl}" style="color:#fbbf24;word-break:break-all;">${safeLnurlpUrl}</a>
           </div>
         </details>
       </div>
@@ -465,11 +457,27 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
           </a>
         </div>
         <div class="qr-caption">
-          <span>📜 Scan with Phoenix or Core Lightning</span>
+          <span>Scan with Phoenix or Core Lightning</span>
         </div>
         <details class="offer-details">
           <summary>View BOLT12 Offer String</summary>
           <code>${safeBolt12}</code>
+        </details>
+      </div>` : ""}
+
+      ${safeSilentPayment ? `
+      <div id="viewSilent" class="qr-view" style="display: none;">
+        <div class="qr-container">
+          <a href="${silentPaymentUri}" title="Scan or click to open in Silent Payment wallet">
+            ${silentPaymentSvg}
+          </a>
+        </div>
+        <div class="qr-caption">
+          <span>Scan with Cake Wallet, Silentium or BIP-352 wallet</span>
+        </div>
+        <details class="offer-details">
+          <summary>View Silent Payment Address</summary>
+          <code style="word-break:break-all;font-size:10px;">${safeSilentPayment}</code>
         </details>
       </div>` : ""}
 
@@ -481,7 +489,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
           </a>
         </div>
         <div class="qr-caption">
-          <span>🥜 Scan with Minibits, eNuts or Cashu wallet</span>
+          <span>Scan with Minibits, eNuts or Cashu wallet</span>
         </div>
         <details class="offer-details">
           <summary>View Cashu Payment Request</summary>
@@ -498,16 +506,21 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
       <div class="actions">
         <button class="btn btn-webln" id="weblnBtn" onclick="payWithWebLN()">
-          <span>⚡</span>
           <span>Send <span id="btnAmountText">21</span> sats via WebLN</span>
         </button>
         <button class="btn btn-secondary" id="btnCopyAddress" onclick="copyAddress()">
-          <span>📋</span>
           <span>Copy Lightning Address</span>
         </button>
+        ${safeBolt12 ? `
+        <button class="btn btn-secondary" id="btnCopyBolt12" style="display: none;" onclick="copyBolt12()">
+          <span>Copy BOLT12 Offer</span>
+        </button>` : ""}
+        ${safeSilentPayment ? `
+        <button class="btn btn-secondary" id="btnCopySilent" style="display: none;" onclick="copySilentPayment()">
+          <span>Copy Silent Payment Address</span>
+        </button>` : ""}
         ${safeCashu ? `
         <button class="btn btn-secondary" id="btnCopyCashu" style="display: none;" onclick="copyCashu()">
-          <span>🥜</span>
           <span>Copy Cashu Request</span>
         </button>` : ""}
       </div>
@@ -523,6 +536,8 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   <script>
     let currentSats = 21;
     const identifier = "${safeIdentifier}";
+    const bolt12Offer = "${safeBolt12 || ""}";
+    const silentPayment = "${safeSilentPayment || ""}";
     const cashuRequest = "${safeCashu || ""}";
 
     function showToast(msg) {
@@ -534,14 +549,28 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     function copyAddress() {
       navigator.clipboard.writeText(identifier).then(() => {
-        showToast("⚡ Address copied to clipboard!");
+        showToast("Address copied to clipboard!");
+      });
+    }
+
+    function copyBolt12() {
+      if (!bolt12Offer) return;
+      navigator.clipboard.writeText(bolt12Offer).then(() => {
+        showToast("BOLT12 offer copied to clipboard!");
+      });
+    }
+
+    function copySilentPayment() {
+      if (!silentPayment) return;
+      navigator.clipboard.writeText(silentPayment).then(() => {
+        showToast("Silent Payment address copied to clipboard!");
       });
     }
 
     function copyCashu() {
       if (!cashuRequest) return;
       navigator.clipboard.writeText(cashuRequest).then(() => {
-        showToast("🥜 Cashu request copied to clipboard!");
+        showToast("Cashu request copied to clipboard!");
       });
     }
 
@@ -558,12 +587,15 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     function switchProtocol(type) {
       const isLightning = type === "lightning";
       const isBolt12 = type === "bolt12";
+      const isSilent = type === "silent";
       const isCashu = type === "cashu";
 
       const tabL = document.getElementById("tabLightning");
       if (tabL) tabL.classList.toggle("active", isLightning);
       const tabB12 = document.getElementById("tabBolt12");
       if (tabB12) tabB12.classList.toggle("active", isBolt12);
+      const tabSP = document.getElementById("tabSilent");
+      if (tabSP) tabSP.classList.toggle("active", isSilent);
       const tabC = document.getElementById("tabCashu");
       if (tabC) tabC.classList.toggle("active", isCashu);
 
@@ -571,15 +603,22 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       if (viewL) viewL.style.display = isLightning ? "block" : "none";
       const viewB12 = document.getElementById("viewBolt12");
       if (viewB12) viewB12.style.display = isBolt12 ? "block" : "none";
+      const viewSP = document.getElementById("viewSilent");
+      if (viewSP) viewSP.style.display = isSilent ? "block" : "none";
       const viewC = document.getElementById("viewCashu");
       if (viewC) viewC.style.display = isCashu ? "block" : "none";
 
       const btnWebln = document.getElementById("weblnBtn");
-      if (btnWebln) btnWebln.style.display = isCashu ? "none" : "flex";
+      if (btnWebln) btnWebln.style.display = isLightning ? "flex" : "none";
       const presets = document.querySelector(".amount-presets");
-      if (presets) presets.style.display = isCashu ? "none" : "grid";
+      if (presets) presets.style.display = isLightning ? "grid" : "none";
+
       const btnCopyAddr = document.getElementById("btnCopyAddress");
-      if (btnCopyAddr) btnCopyAddr.style.display = isCashu ? "none" : "flex";
+      if (btnCopyAddr) btnCopyAddr.style.display = isLightning ? "flex" : "none";
+      const btnCopyB12 = document.getElementById("btnCopyBolt12");
+      if (btnCopyB12) btnCopyB12.style.display = isBolt12 ? "flex" : "none";
+      const btnCopySP = document.getElementById("btnCopySilent");
+      if (btnCopySP) btnCopySP.style.display = isSilent ? "flex" : "none";
       const btnCopyC = document.getElementById("btnCopyCashu");
       if (btnCopyC) btnCopyC.style.display = isCashu ? "flex" : "none";
     }
