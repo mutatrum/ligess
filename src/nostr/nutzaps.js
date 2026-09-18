@@ -211,7 +211,7 @@ async function processNutzapEvent(event, { autoMelt = true, getBackend = getLnCl
         invoice: invoice.bolt11
       })
 
-      console.log(`\x1b[32m⚡ [NUTZAP]\x1b[0m Received & melted ${totalSat} sats into Lightning node from ${event.pubkey.slice(0, 8)}!`)
+      console.log(`\x1b[32m[NUTZAP]\x1b[0m Received & melted ${totalSat} sats into Lightning node from ${event.pubkey.slice(0, 8)}!`)
 
       return {
         success: true,
@@ -264,7 +264,7 @@ function startNutzapService(env = process.env, getBackend = getLnClient) {
     const privBytes = parsePrivateKey(privKey)
     const signed10019 = finalizeEvent(raw10019, privBytes)
     Promise.any(pool.publish(relays, signed10019)).catch(() => {})
-    console.log(`\x1b[35m🥜 [NUTZAP]\x1b[0m Published NIP-61 kind 10019 announcement for ${keys.nostrPubHex.slice(0, 8)}`)
+    console.log(`\x1b[35m[NUTZAP]\x1b[0m Published NIP-61 kind 10019 announcement for ${keys.nostrPubHex.slice(0, 8)}`)
   } catch (err) {
     console.error('Failed to publish kind 10019 nutzap announcement:', err.message)
   }
@@ -275,7 +275,7 @@ function startNutzapService(env = process.env, getBackend = getLnClient) {
     '#p': [keys.nostrPubHex]
   }
 
-  console.log(`\x1b[35m🥜 [NUTZAP]\x1b[0m Listening for incoming Nutzaps on ${relays.length} relays...`)
+  console.log(`\x1b[35m[NUTZAP]\x1b[0m Listening for incoming Nutzaps on ${relays.length} relays...`)
   const sub = pool.subscribeMany(relays, filter, {
     onevent: async (event) => {
       try {

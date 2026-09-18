@@ -38,22 +38,29 @@ const checkLegacyFiles = (env = process.env, cwd = process.cwd()) => {
 }
 
 const checkBip353OnStartup = (env = process.env) => {
-  if (!env.LIGESS_BOLT12_OFFER) return null
+  if (!env.LIGESS_BOLT12_OFFER && !env.LIGESS_SILENT_PAYMENT_ADDRESS) return null
   const user = env.LIGESS_USERNAME
   const domain = env.LIGESS_DOMAIN
   if (!user || !domain) return null
 
   // Non-blocking asynchronous DNS check so server boot is instantaneous
-  return verifyBip353Dns(user, domain, env.LIGESS_BOLT12_OFFER)
+  return verifyBip353Dns(user, domain, env.LIGESS_BOLT12_OFFER, env.LIGESS_SILENT_PAYMENT_ADDRESS)
     .then((res) => {
       if (res.status === "FOUND") {
         if (res.matches) {
-          console.log(`\x1b[32m✔ [BIP-353]\x1b[0m DNS TXT record verified for ${user}@${domain}`)
+          const parts = [
+            env.LIGESS_BOLT12_OFFER ? "BOLT12" : null,
+            env.LIGESS_SILENT_PAYMENT_ADDRESS ? "Silent Payments" : null
+          ].filter(Boolean).join(" + ")
+          console.log(`\x1b[32m[BIP-353]\x1b[0m DNS TXT record verified for ${user}@${domain} (${parts})`)
         } else {
-          console.warn(`\x1b[33m⚠ [BIP-353]\x1b[0m DNS TXT record found for ${user}@${domain}, but offer does not match LIGESS_BOLT12_OFFER!`)
+          const mismatches = []
+          if (env.LIGESS_BOLT12_OFFER && res.offer !== env.LIGESS_BOLT12_OFFER) mismatches.push("BOLT12 offer")
+          if (env.LIGESS_SILENT_PAYMENT_ADDRESS && res.silentPayment !== env.LIGESS_SILENT_PAYMENT_ADDRESS) mismatches.push("Silent Payment address")
+          console.warn(`\x1b[33m[WARN] [BIP-353]\x1b[0m DNS TXT record found for ${user}@${domain}, but ${mismatches.join(" and ")} does not match! Run "npm run bip353" for setup.`)
         }
       } else {
-        console.warn(`\x1b[33m⚠ [BIP-353]\x1b[0m No live DNS TXT record found for ${user}.user._bitcoin-payment.${domain} (${res.error}). Run "npm run bip353" for setup.`)
+        console.warn(`\x1b[33m[WARN] [BIP-353]\x1b[0m No live DNS TXT record found for ${user}.user._bitcoin-payment.${domain} (${res.error}). Run "npm run bip353" for setup.`)
       }
       return res
     })
@@ -78,13 +85,13 @@ const startup = (env = process.env) => {
       const lndInfo = inspectLndMacaroon(env.LIGESS_LND_MACAROON)
       if (lndInfo) {
         if (lndInfo.isAdmin) {
-          console.warn(`\x1b[33m⚠ [LND Macaroon]\x1b[0m Admin permissions detected [fp: ${lndInfo.fingerprint}, ${lndInfo.permissions.length} perms]. Consider baking a restricted macaroon per README.`)
+          console.warn(`\x1b[33m[WARN] [LND Macaroon]\x1b[0m Admin permissions detected [fp: ${lndInfo.fingerprint}, ${lndInfo.permissions.length} perms]. Consider baking a restricted macaroon per README.`)
         } else if (lndInfo.hasOffchainWrite) {
-          console.log(`\x1b[36m⚡ [LND Macaroon]\x1b[0m Full / NWC Spending Mode [fp: ${lndInfo.fingerprint}, permissions: ${lndInfo.permissions.join(', ')}]`)
+          console.log(`\x1b[36m[LND Macaroon]\x1b[0m Full / NWC Spending Mode [fp: ${lndInfo.fingerprint}, permissions: ${lndInfo.permissions.join(', ')}]`)
         } else if (lndInfo.permissions.length > 0) {
-          console.log(`\x1b[32m🔒 [LND Macaroon]\x1b[0m Receive-Only Mode [fp: ${lndInfo.fingerprint}, permissions: ${lndInfo.permissions.join(', ')}]`)
+          console.log(`\x1b[32m[LND Macaroon]\x1b[0m Receive-Only Mode [fp: ${lndInfo.fingerprint}, permissions: ${lndInfo.permissions.join(', ')}]`)
         } else {
-          console.log(`\x1b[36m⚡ [LND Macaroon]\x1b[0m Macaroon loaded [fp: ${lndInfo.fingerprint}, length: ${lndInfo.byteLength} bytes]`)
+          console.log(`\x1b[36m[LND Macaroon]\x1b[0m Macaroon loaded [fp: ${lndInfo.fingerprint}, length: ${lndInfo.byteLength} bytes]`)
         }
       }
       break
@@ -92,14 +99,14 @@ const startup = (env = process.env) => {
 
     case "eclair":
       checkKeys(["LIGESS_ECLAIR_REST", "LIGESS_ECLAIR_PASSWORD"], env)
-      console.log(`\x1b[36m⚡ [Eclair]\x1b[0m Connected to ${env.LIGESS_ECLAIR_REST} (Basic auth: ${env.LIGESS_ECLAIR_LOGIN || 'default'})`)
+      console.log(`\x1b[36m[Eclair]\x1b[0m Connected to ${env.LIGESS_ECLAIR_REST} (Basic auth: ${env.LIGESS_ECLAIR_LOGIN || 'default'})`)
       break
 
     case "lnbits": {
       checkKeys(["LIGESS_LNBITS_DOMAIN", "LIGESS_LNBITS_API_KEY"], env)
       const crypto = require('crypto')
       const fp = crypto.createHash('sha256').update(env.LIGESS_LNBITS_API_KEY || '').digest('hex').slice(0, 8)
-      console.log(`\x1b[36m⚡ [LNbits]\x1b[0m Connected to ${env.LIGESS_LNBITS_DOMAIN} (API key fp: ${fp})`)
+      console.log(`\x1b[36m[LNbits]\x1b[0m Connected to ${env.LIGESS_LNBITS_DOMAIN} (API key fp: ${fp})`)
       break
     }
 
@@ -113,15 +120,15 @@ const startup = (env = process.env) => {
         const runeInfo = inspectClnRune(env.LIGESS_CLN_RUNE)
         if (runeInfo) {
           if (runeInfo.isMaster) {
-            console.warn(`\x1b[33m⚠ [CLN Rune]\x1b[0m Master rune without restrictions detected. Consider restricting rune per README.`)
+            console.warn(`\x1b[33m[WARN] [CLN Rune]\x1b[0m Master rune without restrictions detected. Consider restricting rune per README.`)
           } else {
-            console.log(`\x1b[32m🔒 [CLN Rune]\x1b[0m Restricted rune active [${runeInfo.restrictions.join(', ')}]`)
+            console.log(`\x1b[32m[CLN Rune]\x1b[0m Restricted rune active [${runeInfo.restrictions.join(', ')}]`)
           }
         }
       } else if (env.LIGESS_CLN_MACAROON) {
         const clnMacInfo = inspectLndMacaroon(env.LIGESS_CLN_MACAROON)
         if (clnMacInfo) {
-          console.log(`\x1b[36m⚡ [CLN Macaroon]\x1b[0m Macaroon loaded [fp: ${clnMacInfo.fingerprint}]`)
+          console.log(`\x1b[36m[CLN Macaroon]\x1b[0m Macaroon loaded [fp: ${clnMacInfo.fingerprint}]`)
         }
       }
       break
@@ -129,7 +136,7 @@ const startup = (env = process.env) => {
 
     case "phoenixd":
       checkKeys(["LIGESS_PHOENIXD_PASSWORD"], env)
-      console.log(`\x1b[36m⚡ [Phoenixd]\x1b[0m Connected to ${env.LIGESS_PHOENIXD_URL || 'http://127.0.0.1:9740'} (HTTP password auth)`)
+      console.log(`\x1b[36m[Phoenixd]\x1b[0m Connected to ${env.LIGESS_PHOENIXD_URL || 'http://127.0.0.1:9740'} (HTTP password auth)`)
       break
 
     case "nwc": {
@@ -142,26 +149,26 @@ const startup = (env = process.env) => {
         const url = new URL(env.LIGESS_NWC_URI.replace('nostr+walletconnect:', 'http:'))
         const walletPubkey = url.hostname || url.pathname.replace(/^\/\//, '')
         const relay = url.searchParams.get('relay') || 'default'
-        console.log(`\x1b[36m⚡ [Upstream NWC]\x1b[0m Connected to wallet ${walletPubkey.slice(0, 8)}... via ${relay}`)
+        console.log(`\x1b[36m[Upstream NWC]\x1b[0m Connected to wallet ${walletPubkey.slice(0, 8)}... via ${relay}`)
       } catch (_) {
-        console.log(`\x1b[36m⚡ [Upstream NWC]\x1b[0m URI configured`)
+        console.log(`\x1b[36m[Upstream NWC]\x1b[0m URI configured`)
       }
       break
     }
 
     case "ldk":
       checkKeys(["LIGESS_LDK_URL"], env)
-      console.log(`\x1b[36m⚡ [LDK Node]\x1b[0m Connected to ${env.LIGESS_LDK_URL} (API key auth)`)
+      console.log(`\x1b[36m[LDK Node]\x1b[0m Connected to ${env.LIGESS_LDK_URL} (API key auth)`)
       break
 
     case "blink":
       checkKeys(["LIGESS_BLINK_API_KEY"], env)
-      console.log(`\x1b[36m⚡ [Blink]\x1b[0m Connected to ${env.LIGESS_BLINK_URL || 'https://api.blink.sv/graphql'} (GraphQL API key auth)`)
+      console.log(`\x1b[36m[Blink]\x1b[0m Connected to ${env.LIGESS_BLINK_URL || 'https://api.blink.sv/graphql'} (GraphQL API key auth)`)
       break
 
     case "cashu":
       checkKeys(["LIGESS_CASHU_MINT_URL"], env)
-      console.log(`\x1b[32m🥜 [Cashu Mint]\x1b[0m Gateway to ${env.LIGESS_CASHU_MINT_URL} (Open ecash quotes, zero node credentials)`)
+      console.log(`\x1b[32m[Cashu Mint]\x1b[0m Gateway to ${env.LIGESS_CASHU_MINT_URL} (Open ecash quotes, zero node credentials)`)
       break
 
     default:

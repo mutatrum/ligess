@@ -41,7 +41,8 @@ function createConsoleLogger() {
 }
 
 function logHttpResponse(request, reply) {
-  const ms = reply.getResponseTime().toFixed(1)
+  const elapsed = typeof reply.elapsedTime === 'number' ? reply.elapsedTime : (typeof reply.getResponseTime === 'function' ? reply.getResponseTime() : 0)
+  const ms = Number(elapsed).toFixed(1)
   const status = reply.statusCode
   const statusColor = status >= 500 ? '\x1b[31m' : status >= 400 ? '\x1b[33m' : '\x1b[32m'
   console.log(`\x1b[34m[HTTP]\x1b[0m ${request.method} ${request.url} ${statusColor}${status}\x1b[0m (${ms}ms)`)

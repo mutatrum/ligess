@@ -116,12 +116,12 @@ async function main() {
   const check = await verifyBip353Dns(user, domain, offer, silentPayment)
   if (check.status === 'FOUND') {
     if (check.matches) {
-      console.log(`\x1b[32m✔ [BIP-353]\x1b[0m Verified: Record is live on DNS and matches configured offer!\n`)
+      console.log(`\x1b[32m[BIP-353]\x1b[0m Verified: Record is live on DNS and matches configured offer!\n`)
     } else {
-      console.log(`\x1b[33m⚠ [BIP-353]\x1b[0m Mismatch: DNS record found (${check.offer}), but does not match expected offer!\n`)
+      console.log(`\x1b[33m[WARN] [BIP-353]\x1b[0m Mismatch: DNS record found (${check.offer}), but does not match expected offer!\n`)
     }
   } else {
-    console.log(`\x1b[33m⚠ [BIP-353]\x1b[0m Not live yet: ${check.error}. Add the BIND record to your DNS provider to activate.\n`)
+    console.log(`\x1b[33m[WARN] [BIP-353]\x1b[0m Not live yet: ${check.error}. Add the BIND record to your DNS provider to activate.\n`)
   }
 }
 
