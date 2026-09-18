@@ -85,6 +85,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       color: var(--text-main);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
       min-height: 100vh;
+      min-height: 100svh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -425,6 +426,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     /* Mobile Responsive Optimizations */
     @media (max-width: 580px) {
       body {
+        min-height: 100svh;
         padding: 16px 12px;
       }
 
