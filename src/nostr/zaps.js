@@ -182,13 +182,15 @@ const handleInvoiceUpdate = async (invoice, logger = console) => {
     if (_nostrMetadataNote) {
       const unsentRelays = relays.filter(r => !sentMetadata.includes(r))
       if (unsentRelays.length > 0) {
-        Promise.allSettled(pool.publish(unsentRelays, _nostrMetadataNote)).then(() => {
+        try {
+          await Promise.allSettled(pool.publish(unsentRelays, _nostrMetadataNote))
           unsentRelays.forEach(r => sentMetadata.push(r))
-        }).catch(() => {})
+        } catch (_) {}
       }
     }
 
-    Promise.allSettled(pool.publish(relays, zapNote)).then((results) => {
+    try {
+      const results = await Promise.allSettled(pool.publish(relays, zapNote))
       results.forEach((res, i) => {
         if (res.status === 'fulfilled' && logger.info) {
           logger.info({ msg: 'Zap event published', relay: relays[i], id: zapNote.id })
@@ -196,9 +198,9 @@ const handleInvoiceUpdate = async (invoice, logger = console) => {
           logger.warn({ msg: 'Zap event publish failed', relay: relays[i], error: res.reason?.message || res.reason })
         }
       })
-    }).catch((err) => {
+    } catch (err) {
       if (logger.warn) logger.warn({ msg: 'Zap event broadcast error', error: err.message })
-    })
+    }
   }
 
   db.removePendingZap(invoice.paymentHash)
@@ -210,5 +212,6 @@ module.exports = {
   storePendingZapRequest,
   handleInvoiceUpdate,
   parsePrivateKey,
-  getTags
+  getTags,
+  pool
 }

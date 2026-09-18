@@ -1,7 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { generateSecretKey, getPublicKey, finalizeEvent, nip19 } = require('nostr-tools')
-const { parsePrivateKey, verifyZapRequest, handleInvoiceUpdate } = require('../src/nostr/zaps')
+const { parsePrivateKey, verifyZapRequest, handleInvoiceUpdate, pool } = require('../src/nostr/zaps')
 const db = require('../src/storage/db')
 
 test('Nostr Stack & Zap Validation', async (t) => {
@@ -107,7 +107,7 @@ test('Nostr Stack & Zap Validation', async (t) => {
       created_at: Math.floor(Date.now() / 1000),
       tags: [
         ['p', pk],
-        ['relays', 'wss://1.1.1.1:9999'],
+        ['relays', 'wss://relay.example.com'],
         ['amount', '1000']
       ],
       content: 'test zap'
@@ -115,19 +115,25 @@ test('Nostr Stack & Zap Validation', async (t) => {
 
     db.storePendingZap(testHash, zapReq, '')
 
-    let warned = false
-    await handleInvoiceUpdate({
-      paymentHash: testHash,
-      settled: true,
-      amount: 1,
-      bolt11: 'lnbc...',
-      preImage: '00'.repeat(32)
-    }, {
-      info: () => {},
-      warn: () => { warned = true }
-    })
+    const originalPublish = pool.publish
+    pool.publish = () => [Promise.reject(new Error('connection failed'))]
+    try {
+      let warned = false
+      await handleInvoiceUpdate({
+        paymentHash: testHash,
+        settled: true,
+        amount: 1,
+        bolt11: 'lnbc...',
+        preImage: '00'.repeat(32)
+      }, {
+        info: () => {},
+        warn: () => { warned = true }
+      })
 
-    assert.equal(db.getPendingZap(testHash), null)
+      assert.equal(db.getPendingZap(testHash), null)
+    } finally {
+      pool.publish = originalPublish
+    }
   })
 
   await t.test('should validate anonymous zap request with anon tag (NIP-57)', async () => {
@@ -164,21 +170,27 @@ test('Nostr Stack & Zap Validation', async (t) => {
 
     db.storePendingZap(testHash, anonZapReq, '')
 
-    let loggedInfo = null
-    await handleInvoiceUpdate({
-      paymentHash: testHash,
-      settled: true,
-      amount: 1,
-      bolt11: 'lnbc...',
-      preImage: '00'.repeat(32)
-    }, {
-      info: (arg) => { loggedInfo = arg },
-      warn: () => {}
-    })
+    const originalPublish = pool.publish
+    pool.publish = () => [Promise.resolve()]
+    try {
+      let loggedInfo = null
+      await handleInvoiceUpdate({
+        paymentHash: testHash,
+        settled: true,
+        amount: 1,
+        bolt11: 'lnbc...',
+        preImage: '00'.repeat(32)
+      }, {
+        info: (arg) => { if (arg?.msg === 'Invoice settled') loggedInfo = arg },
+        warn: () => {}
+      })
 
-    assert.ok(loggedInfo)
-    assert.equal(loggedInfo.anon, true)
-    assert.equal(loggedInfo.npub, 'anonymous')
-    assert.equal(db.getPendingZap(testHash), null)
+      assert.ok(loggedInfo)
+      assert.equal(loggedInfo.anon, true)
+      assert.equal(loggedInfo.npub, 'anonymous')
+      assert.equal(db.getPendingZap(testHash), null)
+    } finally {
+      pool.publish = originalPublish
+    }
   })
 })

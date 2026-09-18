@@ -63,14 +63,14 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
   <style>
     :root {
       --bg-gradient: radial-gradient(circle at 50% 0%, #1a162b 0%, #0d0e15 100%);
-      --card-bg: rgba(22, 24, 38, 0.7);
-      --card-border: rgba(255, 255, 255, 0.08);
+      --card-bg: rgba(22, 24, 38, 0.75);
+      --card-border: rgba(255, 255, 255, 0.09);
       --accent-primary: #f59e0b;
       --accent-secondary: #8b5cf6;
       --accent-cyan: #06b6d4;
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
-      --card-radius: 24px;
+      --card-radius: 28px;
       --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -88,24 +88,24 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
+      padding: 32px 16px;
       overflow-x: hidden;
     }
 
     .container {
       width: 100%;
-      max-width: 480px;
+      max-width: 560px;
       margin: auto;
     }
 
     .card {
       background: var(--card-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--card-border);
       border-radius: var(--card-radius);
-      padding: 32px 24px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(139, 92, 246, 0.1);
+      padding: 44px 36px;
+      box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.7), 0 0 50px rgba(139, 92, 246, 0.12);
       position: relative;
       overflow: hidden;
     }
@@ -113,84 +113,86 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .card::before {
       content: "";
       position: absolute;
-      top: -120px;
+      top: -140px;
       left: 50%;
       transform: translateX(-50%);
-      width: 240px;
-      height: 240px;
-      background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, transparent 70%);
       pointer-events: none;
     }
 
     .profile-header {
       text-align: center;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       position: relative;
     }
 
     .avatar {
-      width: 88px;
-      height: 88px;
+      width: 104px;
+      height: 104px;
       border-radius: 50%;
-      margin: 0 auto 16px;
+      margin: 0 auto 18px;
       object-fit: cover;
-      border: 3px solid rgba(245, 158, 11, 0.3);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      border: 3px solid rgba(245, 158, 11, 0.35);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
       background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
+      font-size: 38px;
       font-weight: 700;
       color: #fff;
     }
 
     .display-name {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 10px;
     }
 
     .badge-handle {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.25);
+      gap: 8px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
       color: #fbbf24;
-      padding: 6px 14px;
+      padding: 8px 18px;
       border-radius: 999px;
-      font-size: 14px;
+      font-size: 15.5px;
       font-weight: 600;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       cursor: pointer;
       transition: var(--transition);
       user-select: none;
     }
 
     .badge-handle:hover {
-      background: rgba(245, 158, 11, 0.2);
+      background: rgba(245, 158, 11, 0.22);
       transform: translateY(-1px);
     }
 
     .about {
       color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.5;
-      max-width: 380px;
+      font-size: 15.5px;
+      line-height: 1.6;
+      max-width: 440px;
       margin: 0 auto;
     }
 
     /* Protocol Tabs */
     .tabs {
       display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 8px;
-      margin: 16px auto 12px;
+      margin: 20px auto 16px;
       background: rgba(255, 255, 255, 0.04);
-      padding: 4px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 6px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
       width: fit-content;
       max-width: 100%;
     }
@@ -199,9 +201,9 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 8px 16px;
-      border-radius: 10px;
-      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 14.5px;
       font-weight: 600;
       cursor: pointer;
       transition: var(--transition);
@@ -215,34 +217,33 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     .tab-btn.active {
-      background: rgba(245, 158, 11, 0.15);
+      background: rgba(245, 158, 11, 0.18);
       color: #fbbf24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      border: 1px solid rgba(245, 158, 11, 0.35);
     }
 
-    /* Fixed Pixel Ratio Self-Contained QR Container */
+    /* Self-Contained QR Container */
     .qr-view {
       text-align: center;
-      margin: 12px auto 16px;
+      margin: 16px auto 20px;
     }
 
     .qr-container {
       background: #ffffff;
-      border-radius: 16px;
-      padding: 14px;
-      margin: 0 auto 12px;
-      width: 260px;
-      height: 260px;
+      border-radius: 20px;
+      padding: 18px;
+      margin: 0 auto 16px;
+      width: 320px;
+      height: 320px;
       max-width: 100%;
       aspect-ratio: 1 / 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
       transition: var(--transition);
       overflow: hidden;
     }
-
 
     .qr-container a {
       display: block;
@@ -258,24 +259,24 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     .qr-caption {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 8px;
     }
 
     .qr-caption span {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 4px 10px;
+      padding: 5px 14px;
       border-radius: 999px;
     }
 
     .offer-details {
-      margin-top: 12px;
-      font-size: 12px;
+      margin-top: 14px;
+      font-size: 13px;
       color: var(--text-muted);
       text-align: center;
     }
@@ -283,7 +284,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .offer-details summary {
       cursor: pointer;
       user-select: none;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       color: var(--text-muted);
       transition: color 0.2s;
     }
@@ -295,14 +296,40 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .offer-details code {
       display: block;
       word-break: break-all;
-      padding: 8px 12px;
+      padding: 10px 14px;
       background: rgba(255, 255, 255, 0.04);
-      border-radius: 8px;
-      font-size: 11px;
+      border-radius: 10px;
+      font-size: 11.5px;
       font-family: monospace;
       user-select: all;
       border: 1px solid rgba(255, 255, 255, 0.06);
       text-align: left;
+    }
+
+    /* Preset amounts */
+    .amount-presets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      border-radius: 12px;
+      padding: 11px 8px;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .preset-btn:hover, .preset-btn.active {
+      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.35);
     }
 
     /* Payment Actions */
@@ -310,15 +337,16 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       display: flex;
       flex-direction: column;
       gap: 12px;
-      margin-top: 20px;
+      margin-top: 22px;
     }
 
     .btn {
       width: 100%;
-      padding: 14px 20px;
-      border-radius: 14px;
-      font-size: 15px;
-      font-weight: 600;
+      padding: 16px 24px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -332,13 +360,13 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     .btn-webln {
       background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       color: #000;
-      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.35);
     }
 
     .btn-webln:hover {
       background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+      box-shadow: 0 8px 26px rgba(245, 158, 11, 0.45);
     }
 
     .btn-secondary {
@@ -352,42 +380,16 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       transform: translateY(-1px);
     }
 
-    /* Preset amounts */
-    .amount-presets {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 14px;
-    }
-
-    .preset-btn {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      color: var(--text-muted);
-      border-radius: 10px;
-      padding: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .preset-btn:hover, .preset-btn.active {
-      color: #fbbf24;
-      background: rgba(245, 158, 11, 0.1);
-      border-color: rgba(245, 158, 11, 0.3);
-    }
-
     .toast {
       position: fixed;
-      bottom: 24px;
+      bottom: 28px;
       left: 50%;
       transform: translateX(-50%) translateY(100px);
       background: #10b981;
       color: #fff;
-      padding: 10px 20px;
+      padding: 12px 24px;
       border-radius: 999px;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -401,14 +403,76 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .footer {
       text-align: center;
-      margin-top: 24px;
-      font-size: 12px;
+      margin-top: 28px;
+      font-size: 13.5px;
       color: #6b7280;
     }
 
     .footer a {
       color: #9ca3af;
       text-decoration: none;
+    }
+
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 480px) {
+      body {
+        padding: 16px 12px;
+      }
+
+      .card {
+        padding: 28px 18px;
+        border-radius: 22px;
+      }
+
+      .avatar {
+        width: 92px;
+        height: 92px;
+        font-size: 34px;
+      }
+
+      .display-name {
+        font-size: 24px;
+      }
+
+      .badge-handle {
+        font-size: 14px;
+        padding: 6px 14px;
+      }
+
+      .about {
+        font-size: 14px;
+      }
+
+      .tabs {
+        gap: 6px;
+        padding: 4px;
+      }
+
+      .tab-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+
+      .qr-container {
+        width: min(280px, 80vw);
+        height: min(280px, 80vw);
+        padding: 14px;
+        border-radius: 18px;
+      }
+
+      .amount-presets {
+        gap: 6px;
+      }
+
+      .preset-btn {
+        padding: 10px 4px;
+        font-size: 13px;
+      }
+
+      .btn {
+        padding: 14px 18px;
+        font-size: 15px;
+      }
     }
   </style>
 </head>

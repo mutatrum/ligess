@@ -1,3 +1,13 @@
+FROM node:22-alpine AS tester
+
+WORKDIR /app
+
+COPY package.json ./
+RUN npm install
+
+COPY . .
+RUN node --test test/*.test.js
+
 FROM node:22-alpine AS builder
 
 WORKDIR /app

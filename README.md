@@ -182,7 +182,27 @@ To run the automated test suite:
 npm test
 ```
 
-### 2. Docker Compose
+### 2. Container Build & Automated Testing (Podman / Docker)
+
+Ligess features hermetic, containerized test execution via a multi-stage `Dockerfile`:
+
+1. **Automated Test Stage (`tester`)**: Installs all dependencies and runs the complete test suite (`node --test test/*.test.js`) inside an isolated, containerized Node 22 Alpine environment.
+2. **Regression Prevention**: If any unit test fails, the image build terminates immediately with a non-zero exit code, preventing broken or regressed images from being created, tagged, or deployed.
+3. **Lean Production Image**: Once all tests pass, clean production dependencies are installed (`npm install --omit=dev`) and copied into a minimal Alpine runtime image with zero development dependencies.
+
+```bash
+# Build production image and execute the full test suite in container:
+podman build -t localhost/ligess:2.0.0 .
+# or with Docker:
+docker build -t ligess:latest .
+```
+
+To run only the test stage:
+```bash
+podman build --target tester -t ligess-test .
+```
+
+### 3. Docker Compose / Podman Compose
 ```bash
 git clone https://git.mutatrum.com/mutatrum/ligess
 cd ligess
