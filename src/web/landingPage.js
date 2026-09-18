@@ -104,7 +104,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--card-border);
       border-radius: var(--card-radius);
-      padding: 44px 36px;
+      padding: 40px 28px;
       box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.7), 0 0 50px rgba(139, 92, 246, 0.12);
       position: relative;
       overflow: hidden;
@@ -185,13 +185,13 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     /* Protocol Tabs */
     .tabs {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       margin: 20px auto 16px;
       background: rgba(255, 255, 255, 0.04);
-      padding: 6px;
-      border-radius: 16px;
+      padding: 4px;
+      border-radius: 14px;
       border: 1px solid rgba(255, 255, 255, 0.07);
       width: fit-content;
       max-width: 100%;
@@ -201,15 +201,16 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 10px 18px;
-      border-radius: 12px;
-      font-size: 14.5px;
+      padding: 8px 13px;
+      border-radius: 10px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: var(--transition);
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      white-space: nowrap;
     }
 
     .tab-btn:hover {
