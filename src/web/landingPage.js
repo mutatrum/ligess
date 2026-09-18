@@ -210,7 +210,6 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       display: flex;
       align-items: center;
       gap: 5px;
-      white-space: nowrap;
     }
 
     .tab-btn:hover {
