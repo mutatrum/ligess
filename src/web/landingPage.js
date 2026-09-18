@@ -161,7 +161,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       color: #fbbf24;
       padding: 9px 20px;
       border-radius: 999px;
-      font-size: 17.5px;
+      font-size: 18px;
       font-weight: 600;
       margin-bottom: 16px;
       cursor: pointer;
@@ -176,8 +176,8 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .about {
       color: var(--text-muted);
-      font-size: 17.5px;
-      line-height: 1.65;
+      font-size: 15px;
+      line-height: 1.6;
       max-width: 500px;
       margin: 0 auto;
     }
@@ -185,31 +185,40 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     /* Protocol Tabs */
     .tabs {
       display: flex;
-      flex-wrap: nowrap;
-      justify-content: center;
-      gap: 8px;
+      flex-direction: row;
+      flex-wrap: nowrap !important;
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 6px;
       margin: 24px auto 20px;
       background: rgba(255, 255, 255, 0.04);
       padding: 5px;
       border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.07);
-      width: fit-content;
+      width: 100%;
       max-width: 100%;
+      box-sizing: border-box;
     }
 
     .tab-btn {
+      flex: 1 1 0;
+      min-width: 0;
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 9px 16px;
+      padding: 10px 4px;
       border-radius: 12px;
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 600;
+      line-height: 1.25;
       cursor: pointer;
       transition: var(--transition);
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      text-align: center;
+      gap: 2px;
     }
 
     .tab-btn:hover {
@@ -259,7 +268,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
     }
 
     .qr-caption {
-      font-size: 16px;
+      font-size: 15px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
@@ -403,7 +412,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
     .footer {
       text-align: center;
-      margin-top: 32px;
+      margin-top: 20px;
       font-size: 15px;
       color: #6b7280;
     }
@@ -447,15 +456,21 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
       }
 
       .tabs {
-        flex-wrap: wrap;
-        gap: 6px;
+        flex-wrap: nowrap !important;
+        gap: 4px;
         padding: 4px;
         margin: 16px auto 14px;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .tab-btn {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 8px 3px;
+        font-size: 12px;
+        line-height: 1.2;
+        gap: 1px;
+        flex: 1 1 0;
+        min-width: 0;
       }
 
       .qr-view {
@@ -510,7 +525,7 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
       .footer {
         font-size: 13px;
-        margin-top: 22px;
+        margin-top: 20px;
       }
     }
   </style>
@@ -530,10 +545,10 @@ function renderLandingPage({ username, domain, identifier, lnurlBech32, bolt12Of
 
       ${(safeBolt12 || safeSilentPayment || safeCashu) ? `
       <div class="tabs">
-        <button class="tab-btn active" id="tabLightning" onclick="switchProtocol('lightning')">Lightning Address</button>
-        ${safeBolt12 ? `<button class="tab-btn" id="tabBolt12" onclick="switchProtocol('bolt12')">BOLT12 Offer</button>` : ""}
-        ${safeSilentPayment ? `<button class="tab-btn" id="tabSilent" onclick="switchProtocol('silent')">Silent Payment</button>` : ""}
-        ${safeCashu ? `<button class="tab-btn" id="tabCashu" onclick="switchProtocol('cashu')">Cashu Ecash</button>` : ""}
+        <button class="tab-btn active" id="tabLightning" onclick="switchProtocol('lightning')"><span>Lightning</span><span>Address</span></button>
+        ${safeBolt12 ? `<button class="tab-btn" id="tabBolt12" onclick="switchProtocol('bolt12')"><span>BOLT12</span><span>Offer</span></button>` : ""}
+        ${safeSilentPayment ? `<button class="tab-btn" id="tabSilent" onclick="switchProtocol('silent')"><span>Silent</span><span>Payment</span></button>` : ""}
+        ${safeCashu ? `<button class="tab-btn" id="tabCashu" onclick="switchProtocol('cashu')"><span>Cashu</span><span>Ecash</span></button>` : ""}
       </div>` : ""}
 
       <div id="viewLightning" class="qr-view">
