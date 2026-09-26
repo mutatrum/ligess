@@ -18,11 +18,11 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 - ⚙️ **Dynamic Relay & Profile Configuration (Sunsetting JSON files)**:
   - Dynamically calculates `supported_nips` ([1, 4, 5, 11, 42, 44, 47, 57, 61]), software repo, and version.
   - Profile metadata (Kind 0 & landing page) and relay information are derived dynamically from `.env` (`LIGESS_NOSTR_*` and `LIGESS_RELAY_*`), eliminating static JSON files (`relayInformation.json` and `metadata.json`) with deprecation warnings for legacy files.
-- ⚡ **9 Native Lightning & Ecash Backends (Sunsetting `una-wrapper`)**:
-  - Direct REST, GraphQL, and Nostr drivers for **LND**, **Core Lightning (CLN)**, **LNbits**, **Eclair**, **Phoenixd**, **Upstream NWC** (Alby Hub, Umbrel, Zeus), **LDK Node / Server**, **Blink (Galoy)**, and **Cashu Mint**.
+- ⚡ **11 Native Lightning, Ecash & Ark Backends (Sunsetting `una-wrapper`)**:
+  - Direct REST, GraphQL, and Nostr drivers for **LND**, **Core Lightning (CLN)**, **LNbits**, **Eclair**, **Phoenixd**, **Upstream NWC** (Alby Hub, Umbrel, Zeus), **LDK Node / Server**, **Blink (Galoy)**, **Cashu Mint**, **Bark (`barkd`)**, and **Arkade (`arkd`)**.
   - **Real-Time Invoice Streaming**: Native SSE push notifications for LND (`/v1/invoices/subscribe`) and Phoenixd (`/payments/incoming`), eliminating polling delays for instant zap receipts.
 - 🛡️ **Zero-Dependency Protobuf & Credential Security Inspection**:
-  - Automatically inspects and validates credentials across all 9 backends at boot without leaking sensitive keys.
+  - Automatically inspects and validates credentials across all 11 backends at boot without leaking sensitive keys.
   - Decodes LND macaroon permissions via a lightweight, zero-dependency wire decoder (`src/backends/protobuf.js`).
   - Verifies Core Lightning (CLN) rune restrictions and reports whether full spending or receive-only mode is active.
   - Logs SHA-256 fingerprints for credential auditing and warns if unrestricted administrative privileges are detected on public-facing servers.
@@ -62,7 +62,7 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 
 ## Prerequisites
 - Node.js >= 18 (Tested on v20 and v24)
-- Lightning Node or Gateway (LND, CLN, LNbits, Eclair, Phoenixd, Upstream NWC, LDK, Blink, or Cashu)
+- Lightning Node or Gateway (LND, CLN, LNbits, Eclair, Phoenixd, Upstream NWC, LDK, Blink, Cashu, Bark, or Arkade)
 - Domain name with HTTPS
 
 ---
@@ -80,6 +80,8 @@ A massively simpler way for anyone to send you Bitcoin instantly on the Lightnin
 | **LDK** | Native REST | ✅ Polling stream | `LIGESS_LDK_URL`, `LIGESS_LDK_API_KEY` |
 | **Blink** | GraphQL API | ✅ Polling stream | `LIGESS_BLINK_API_KEY`, `LIGESS_BLINK_URL` |
 | **Cashu** | NUT-04 / NUT-05 | ✅ Quote status stream | `LIGESS_CASHU_MINT_URL` |
+| **Bark** | Native REST | ✅ Polling stream | `LIGESS_BARK_URL`, `LIGESS_BARK_TOKEN` |
+| **Arkade** | Native REST | ✅ Polling stream | `LIGESS_ARKADE_URL`, `LIGESS_ARKADE_API_KEY` |
  
 ### Backend Capabilities Matrix
 
@@ -96,11 +98,13 @@ The matrix below shows which features and protocols are supported across each ba
 | **LDK Node** | ✅ | ✅ (Polling) | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **Blink** | ✅ | ✅ (Polling) | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **Cashu** | ✅ (Mint Quote) | ✅ (Quote Check) | ✅ (Melt Quote) | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Bark** | ✅ | ✅ (Polling) | ✅ | ❌ | ✅ (`/api/v1/lightning/payments`) | ✅ | ✅ | ❌ |
+| **Arkade** | ✅ | ✅ (Polling) | ✅ | ❌ | ✅ (`/v1/lightning/payments`) | ✅ | ✅ | ❌ |
 
 > **Notes on Matrix Capabilities:**
-> - **Inbound & Zaps**: All 9 backends support generating invoices for Lightning Address (`name@domain.com`), LNURL-pay (LUD-01..21), Nostr Zaps (NIP-57), and Nutzap auto-melting (NIP-61).
+> - **Inbound & Zaps**: All 11 backends support generating invoices for Lightning Address (`name@domain.com`), LNURL-pay (LUD-01..21), Nostr Zaps (NIP-57), and Nutzap auto-melting (NIP-61).
 > - **Keysend (bLIP-0003)**: Fully supported for LND, CLN, and upstream NWC backends with custom TLV record support.
-> - **Transaction History (`list_transactions`)**: Fully supported for LND, CLN, and upstream NWC backends for client wallets inquiring history via NIP-47.
+> - **Transaction History (`list_transactions`)**: Fully supported for LND, CLN, upstream NWC, Bark, and Arkade backends for client wallets inquiring history via NIP-47.
 > - **BOLT12**: Supported natively in CLN and Phoenixd, and supported in LND via the [LNDK](https://github.com/lndk-org/lndk) sidecar integration.
 
 ---

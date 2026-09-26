@@ -9,6 +9,8 @@ const NwcBackend = require('../src/backends/nwc')
 const LdkBackend = require('../src/backends/ldk')
 const BlinkBackend = require('../src/backends/blink')
 const CashuBackend = require('../src/backends/cashu')
+const BarkBackend = require('../src/backends/bark')
+const ArkadeBackend = require('../src/backends/arkade')
 const { createBackend } = require('../src/backends/factory')
 
 describe('Backend Drivers & Factory', () => {
@@ -275,6 +277,318 @@ describe('Backend Drivers & Factory', () => {
     assert.strictEqual(sentParams.limit, 5)
     assert.strictEqual(listRes.length, 1)
     assert.strictEqual(listRes[0].amount, 500)
+  })
+
+  it('Bark driver should instantiate and configure baseUrl and token', () => {
+    const bark = new BarkBackend({
+      url: 'http://127.0.0.1:3141',
+      token: 'bark_secret_token'
+    })
+    assert.strictEqual(bark.baseUrl, 'http://127.0.0.1:3141')
+    assert.strictEqual(bark.token, 'bark_secret_token')
+
+    const creds = bark.inspectCredentials()
+    assert.strictEqual(creds.type, 'Barkd Bearer Token')
+    assert.strictEqual(creds.domain, 'http://127.0.0.1:3141')
+    assert.ok(creds.fingerprint)
+  })
+
+  it('Bark driver should create invoices and normalize response', async () => {
+    const bark = new BarkBackend({ token: 'test' })
+    let requestedPath = ''
+    let requestedBody = null
+
+    bark._request = async (method, path, body) => {
+      requestedPath = path
+      requestedBody = body
+      return {
+        bolt11: 'lnbc50u1barktest...',
+        payment_hash: 'bark_payment_hash_123'
+      }
+    }
+
+    const inv = await bark.createInvoice({
+      amountMsats: 50000,
+      memo: 'Test Ark Lightning',
+      descriptionHash: 'desc_hash_hex',
+      expiry: 1800
+    })
+
+    assert.strictEqual(requestedPath, '/api/v1/lightning/invoice')
+    assert.strictEqual(requestedBody.amount_sat, 50)
+    assert.strictEqual(requestedBody.amount_msat, 50000)
+    assert.strictEqual(requestedBody.description, 'Test Ark Lightning')
+    assert.strictEqual(requestedBody.description_hash, 'desc_hash_hex')
+    assert.strictEqual(requestedBody.expiry, 1800)
+
+    assert.strictEqual(inv.bolt11, 'lnbc50u1barktest...')
+    assert.strictEqual(inv.paymentHash, 'bark_payment_hash_123')
+    assert.strictEqual(inv.amountMsats, 50000)
+  })
+
+  it('Bark driver should query invoice status', async () => {
+    const bark = new BarkBackend({ token: 'test' })
+    bark._request = async (method, path) => {
+      assert.strictEqual(path, '/api/v1/lightning/invoice/bark_hash')
+      return {
+        bolt11: 'lnbc50u1...',
+        status: 'settled',
+        amount_sat: 50,
+        amount_msat: 50000,
+        preimage: 'preimage_hex_32',
+        settled_at: 1690000500
+      }
+    }
+
+    const res = await bark.getInvoice('bark_hash')
+    assert.strictEqual(res.settled, true)
+    assert.strictEqual(res.status, 'Settled')
+    assert.strictEqual(res.amount, 50)
+    assert.strictEqual(res.amountMsat, 50000)
+    assert.strictEqual(res.preImage, 'preimage_hex_32')
+    assert.ok(res.settleDate instanceof Date)
+  })
+
+  it('Bark driver should pay invoices', async () => {
+    const bark = new BarkBackend({ token: 'test' })
+    let payPayload = null
+    bark._request = async (method, path, body) => {
+      assert.strictEqual(path, '/api/v1/lightning/pay')
+      payPayload = body
+      return {
+        preimage: 'paid_preimage_hex',
+        fee_sat: 2,
+        fee_msat: 2000
+      }
+    }
+
+    const payRes = await bark.payInvoice({ bolt11: 'lnbc100u1pay...', amountMsats: 100000 })
+    assert.strictEqual(payPayload.invoice, 'lnbc100u1pay...')
+    assert.strictEqual(payPayload.amount_sat, 100)
+    assert.strictEqual(payRes.paymentPreimage, 'paid_preimage_hex')
+    assert.strictEqual(payRes.feesAmountMsats, 2000)
+  })
+
+  it('Bark driver should query balance and info', async () => {
+    const bark = new BarkBackend({ token: 'test' })
+    bark._request = async (method, path) => {
+      if (path === '/api/v1/wallet/balance') {
+        return { vtxo_balance_sat: 21000 }
+      }
+      if (path === '/api/v1/info') {
+        return { wallet_name: 'Alice Ark', asp_pubkey: '03asp_pubkey', version: 'barkd v0.7.2' }
+      }
+      return {}
+    }
+
+    const bal = await bark.getBalance()
+    assert.strictEqual(bal.balanceMsats, 21000000)
+
+    const info = await bark.getInfo()
+    assert.strictEqual(info.alias, 'Alice Ark')
+    assert.strictEqual(info.pubkey, '03asp_pubkey')
+    assert.strictEqual(info.version, 'barkd v0.7.2')
+  })
+
+  it('Bark driver should list transactions and normalize incoming/outgoing', async () => {
+    const bark = new BarkBackend({ token: 'test' })
+    bark._request = async (method, path) => {
+      return [
+        {
+          type: 'incoming',
+          status: 'settled',
+          bolt11: 'lnbc1...',
+          payment_hash: 'hash_in',
+          preimage: 'pre_in',
+          amount_msat: 50000,
+          created_at: 1690000100
+        },
+        {
+          type: 'outgoing',
+          status: 'settled',
+          bolt11: 'lnbc2...',
+          payment_hash: 'hash_out',
+          preimage: 'pre_out',
+          amount_sat: 100,
+          fee_sat: 1,
+          created_at: 1690000200
+        }
+      ]
+    }
+
+    const txs = await bark.listTransactions()
+    assert.strictEqual(txs.length, 2)
+    assert.strictEqual(txs[0].type, 'incoming')
+    assert.strictEqual(txs[0].amount, 50000)
+    assert.strictEqual(txs[1].type, 'outgoing')
+    assert.strictEqual(txs[1].amount, 100000)
+    assert.strictEqual(txs[1].fees_paid, 1000)
+  })
+
+  it('should instantiate Bark driver via factory', () => {
+    const backend = createBackend('bark', {
+      LIGESS_BARK_URL: 'http://127.0.0.1:3141',
+      LIGESS_BARK_TOKEN: 'factory_token'
+    })
+    assert.ok(backend instanceof BarkBackend)
+    assert.strictEqual(backend.baseUrl, 'http://127.0.0.1:3141')
+    assert.strictEqual(backend.token, 'factory_token')
+  })
+
+  it('Arkade driver should instantiate and configure baseUrl and apiKey', () => {
+    const arkade = new ArkadeBackend({
+      url: 'http://127.0.0.1:7070',
+      apiKey: 'arkade_secret_key'
+    })
+    assert.strictEqual(arkade.baseUrl, 'http://127.0.0.1:7070')
+    assert.strictEqual(arkade.apiKey, 'arkade_secret_key')
+
+    const creds = arkade.inspectCredentials()
+    assert.strictEqual(creds.type, 'Arkade API Key / Token')
+    assert.strictEqual(creds.domain, 'http://127.0.0.1:7070')
+    assert.ok(creds.fingerprint)
+  })
+
+  it('Arkade driver should create invoices and normalize response', async () => {
+    const arkade = new ArkadeBackend({ apiKey: 'test' })
+    let requestedPath = ''
+    let requestedBody = null
+
+    arkade._request = async (method, path, body) => {
+      requestedPath = path
+      requestedBody = body
+      return {
+        bolt11: 'lnbc75u1arkadetest...',
+        payment_hash: 'arkade_payment_hash_456'
+      }
+    }
+
+    const inv = await arkade.createInvoice({
+      amountMsats: 75000,
+      memo: 'Test Arkade Lightning',
+      descriptionHash: 'arkade_desc_hash_hex',
+      expiry: 3600
+    })
+
+    assert.strictEqual(requestedPath, '/v1/lightning/invoice')
+    assert.strictEqual(requestedBody.amount_sat, 75)
+    assert.strictEqual(requestedBody.amount_msat, 75000)
+    assert.strictEqual(requestedBody.description, 'Test Arkade Lightning')
+    assert.strictEqual(requestedBody.description_hash, 'arkade_desc_hash_hex')
+    assert.strictEqual(requestedBody.expiry, 3600)
+
+    assert.strictEqual(inv.bolt11, 'lnbc75u1arkadetest...')
+    assert.strictEqual(inv.paymentHash, 'arkade_payment_hash_456')
+    assert.strictEqual(inv.amountMsats, 75000)
+  })
+
+  it('Arkade driver should query invoice status', async () => {
+    const arkade = new ArkadeBackend({ apiKey: 'test' })
+    arkade._request = async (method, path) => {
+      assert.strictEqual(path, '/v1/lightning/invoice/arkade_hash')
+      return {
+        bolt11: 'lnbc75u1...',
+        status: 'claimed',
+        amount_sat: 75,
+        amount_msat: 75000,
+        preimage: 'arkade_preimage_32',
+        settled_at: 1690000800
+      }
+    }
+
+    const res = await arkade.getInvoice('arkade_hash')
+    assert.strictEqual(res.settled, true)
+    assert.strictEqual(res.status, 'Settled')
+    assert.strictEqual(res.amount, 75)
+    assert.strictEqual(res.amountMsat, 75000)
+    assert.strictEqual(res.preImage, 'arkade_preimage_32')
+    assert.ok(res.settleDate instanceof Date)
+  })
+
+  it('Arkade driver should pay invoices', async () => {
+    const arkade = new ArkadeBackend({ apiKey: 'test' })
+    let payPayload = null
+    arkade._request = async (method, path, body) => {
+      assert.strictEqual(path, '/v1/lightning/pay')
+      payPayload = body
+      return {
+        preimage: 'arkade_paid_preimage',
+        fee_sat: 3,
+        fee_msat: 3000
+      }
+    }
+
+    const payRes = await arkade.payInvoice({ bolt11: 'lnbc100u1pay...', amountMsats: 100000 })
+    assert.strictEqual(payPayload.invoice, 'lnbc100u1pay...')
+    assert.strictEqual(payPayload.amount_sat, 100)
+    assert.strictEqual(payRes.paymentPreimage, 'arkade_paid_preimage')
+    assert.strictEqual(payRes.feesAmountMsats, 3000)
+  })
+
+  it('Arkade driver should query balance and info', async () => {
+    const arkade = new ArkadeBackend({ apiKey: 'test' })
+    arkade._request = async (method, path) => {
+      if (path === '/v1/wallet/balance') {
+        return { spendable_sat: 50000 }
+      }
+      if (path === '/v1/info') {
+        return { alias: 'Arkade Main Node', pubkey: '02arkade_operator_pubkey', version: 'arkd v1.2' }
+      }
+      return {}
+    }
+
+    const bal = await arkade.getBalance()
+    assert.strictEqual(bal.balanceMsats, 50000000)
+
+    const info = await arkade.getInfo()
+    assert.strictEqual(info.alias, 'Arkade Main Node')
+    assert.strictEqual(info.pubkey, '02arkade_operator_pubkey')
+    assert.strictEqual(info.version, 'arkd v1.2')
+  })
+
+  it('Arkade driver should list transactions and normalize incoming/outgoing', async () => {
+    const arkade = new ArkadeBackend({ apiKey: 'test' })
+    arkade._request = async (method, path) => {
+      return [
+        {
+          type: 'incoming',
+          status: 'claimed',
+          bolt11: 'lnbc_in...',
+          payment_hash: 'hash_in',
+          preimage: 'pre_in',
+          amount_msat: 80000,
+          created_at: 1690000300
+        },
+        {
+          type: 'outgoing',
+          status: 'settled',
+          bolt11: 'lnbc_out...',
+          payment_hash: 'hash_out',
+          preimage: 'pre_out',
+          amount_sat: 200,
+          fee_sat: 2,
+          created_at: 1690000400
+        }
+      ]
+    }
+
+    const txs = await arkade.listTransactions()
+    assert.strictEqual(txs.length, 2)
+    assert.strictEqual(txs[0].type, 'incoming')
+    assert.strictEqual(txs[0].amount, 80000)
+    assert.strictEqual(txs[1].type, 'outgoing')
+    assert.strictEqual(txs[1].amount, 200000)
+    assert.strictEqual(txs[1].fees_paid, 2000)
+  })
+
+  it('should instantiate Arkade driver via factory', () => {
+    const backend = createBackend('arkade', {
+      LIGESS_ARKADE_URL: 'http://127.0.0.1:7070',
+      LIGESS_ARKADE_API_KEY: 'factory_arkade_token'
+    })
+    assert.ok(backend instanceof ArkadeBackend)
+    assert.strictEqual(backend.baseUrl, 'http://127.0.0.1:7070')
+    assert.strictEqual(backend.apiKey, 'factory_arkade_token')
   })
 })
 

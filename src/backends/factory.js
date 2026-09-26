@@ -7,6 +7,8 @@ const NwcBackend = require('./nwc')
 const LdkBackend = require('./ldk')
 const BlinkBackend = require('./blink')
 const CashuBackend = require('./cashu')
+const BarkBackend = require('./bark')
+const ArkadeBackend = require('./arkade')
 
 const createBackend = (type = process.env.LIGESS_LN_BACKEND, env = process.env) => {
   const normalized = (type || '').toLowerCase().trim()
@@ -73,6 +75,20 @@ const createBackend = (type = process.env.LIGESS_LN_BACKEND, env = process.env) 
     case 'cashu':
       return new CashuBackend({
         mintUrl: env.LIGESS_CASHU_MINT_URL,
+        socksProxyUrl: proxy
+      })
+
+    case 'bark':
+      return new BarkBackend({
+        url: env.LIGESS_BARK_URL || 'http://127.0.0.1:3141',
+        token: env.LIGESS_BARK_TOKEN,
+        socksProxyUrl: proxy
+      })
+
+    case 'arkade':
+      return new ArkadeBackend({
+        url: env.LIGESS_ARKADE_URL || 'http://127.0.0.1:7070',
+        apiKey: env.LIGESS_ARKADE_API_KEY,
         socksProxyUrl: proxy
       })
 
